@@ -16,6 +16,10 @@ EPOCHS = 50
 TRAIN = True
 
 '''
+DISCLAIMER : Comments do not necessarily reflect ground truths. Please forgive me. :p
+'''
+
+'''
 Network architecture : 
 
 4 input neurons - modelled in INeuron - vth = 1, a = 0.2, b = 0.025, with each neuron is associated the firing times - tf,
