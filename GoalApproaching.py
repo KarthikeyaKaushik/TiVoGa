@@ -1,8 +1,9 @@
 import numpy as np
 import math
+from matplotlib import pyplot
 import random
-N = 500
-WMAX = 5
+N = 1
+WMAX = 3
 C1 = 1/WMAX
 EPMAX = N # online calculation
 EMAX = .2
@@ -11,7 +12,7 @@ MAX_STDP = 8
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 50
+EPOCHS = 200
 
 TRAIN = True
 
@@ -117,11 +118,12 @@ class HNeuron():
         if dt >= 0: return 0.4*math.exp(-dt/10)
         else: return -0.42*math.exp(dt/10)
 
-    def stdp2(self,tmat,t,curr_ep):
+    def stdp2(self,tmat,t,curr_ep,weights):
         '''
         :param tmat: input to the hidden neuron - the firing times of the input neurons.
         :param t: present time frame
         :param w: weights associated with that neuron in the backward direction
+        :param weights: to calculate gij
         :return: none
         the eqns are updated according to 5.10,11,12 -
         Idea is that when pre synaptic neuron fires - ie., tmat[end] = present time, update self.apre, change self.delta[index]
@@ -133,12 +135,12 @@ class HNeuron():
             if len(n_tif) > 0: # has to possess at least one pulse
                 if n_tif[-1] == t: # implies a pre-synaptic pulse
                     self.apre[index] += self.Apre
-                    self.delta_w[index] += self.apost*eta_val(curr_ep) # multiply with gij here
+                    self.delta_w[index] += self.apost*eta_val(curr_ep)*gij(weights[index]) # multiply with gij here
         if len(self.tf) > 0:
             if self.tf[-1] == t:
                 self.apost -= self.Apost  # is this plus or minus? :(
                 for index,_ in enumerate(tmat):
-                    self.delta_w[index] += self.apre[index]*eta_val(curr_ep) # multiply with gij here
+                    self.delta_w[index] += self.apre[index]*eta_val(curr_ep)*gij(weights[index]) # multiply with gij here
 
 
     def stdp(self,tmat):
@@ -182,8 +184,8 @@ class ONeuron():
         self.apre = np.zeros(shape=(HIDDEN_LAYER))
         self.delta_w = np.zeros(shape=(HIDDEN_LAYER)) # stores the changes associated with each hidden neuron
         self.apost = 0
-        self.Apre = 0.1 # see if this needs to be changed
-        self.Apost = 0.105 # see if this needs to be changed
+        self.Apre = .1 # see if this needs to be changed
+        self.Apost = .105 # see if this needs to be changed
         self.taupre = 10
         self.taupost = 10
 
@@ -218,11 +220,11 @@ class ONeuron():
         if dt >= 0: return 0.4*math.exp(-dt/10)
         else: return -0.42*math.exp(dt/10)
 
-    def stdp2(self,tmat,t,curr_ep):
+    def stdp2(self,tmat,t,curr_ep,weights):
         '''
         :param tmat: input to the hidden neuron - the firing times of the input neurons.
         :param t: present time frame
-        :param w: weights associated with that neuron in the backward direction
+        :param weights: weights associated with that neuron in the backward direction
         :return: none
         the eqns are updated according to 5.10,11,12 -
         Idea is that when pre synaptic neuron fires - ie., tmat[end] = present time, update self.apre, change self.delta[index]
@@ -234,12 +236,12 @@ class ONeuron():
             if len(n_tif) > 0: # has to possess at least one pulse
                 if n_tif[-1] == t: # implies a pre-synaptic pulse
                     self.apre[index] += self.Apre
-                    self.delta_w[index] += self.apost*eta_val(curr_ep) # multiply with gij here
+                    self.delta_w[index] += self.apost*eta_val(curr_ep)*gij(weights[index]) # multiply with gij here
         if len(self.tf) > 0:
             if self.tf[-1] == t:
                 self.apost -= self.Apost  # is this plus or minus? :(
                 for index,_ in enumerate(tmat):
-                    self.delta_w[index] += self.apre[index]*eta_val(curr_ep) # multiply with gij here
+                    self.delta_w[index] += self.apre[index]*eta_val(curr_ep)*gij(weights[index]) # multiply with gij here
 
 
     def stdp(self,tmat):
@@ -263,7 +265,7 @@ class ONeuron():
             return -90*self.encode_output(t)
 
     def calculate_reward(self,y_data,t,index):
-        return (abs(y_data) - abs(self.calculate_angle(t,index)))/90 # max angle = 90
+        return (abs(y_data) - abs(self.calculate_angle(t,index)))/110 # max angle = 90
 
 
 
@@ -347,7 +349,7 @@ class SNN():
         print('data gen done.')
         return data
 
-    def forward_pass(self,x_input):
+    def forward_pass(self,x_input,ep):
         tmat_input = []
         tmat_hidden = []
         for i in range(INPUT_LAYER):
@@ -362,10 +364,10 @@ class SNN():
             self.output_layer[i].update(self.W[1],tmat_hidden,self.frame,i)
 
         for i in range(HIDDEN_LAYER):
-            self.hidden_layer[i].stdp2(tmat_input,self.frame,curr_ep)
+            self.hidden_layer[i].stdp2(tmat_input,self.frame,ep,weights=self.W[0][i])
 
         for i in range(OUTPUT_LAYER):
-            self.output_layer[i].stdp2(tmat_hidden,self.frame,curr_ep)
+            self.output_layer[i].stdp2(tmat_hidden,self.frame,ep,weights=self.W[1][i])
 
         self.frame = self.frame + 1
         return tmat_input,tmat_hidden
@@ -374,20 +376,16 @@ class SNN():
         print('encodings : ',self.output_layer[0].encode_output(frame), self.output_layer[1].encode_output(frame))
         if y_data[0] < 180:
             adjL = self.output_layer[0].calculate_reward(y_data[0],frame,index=0)
-            if adjL > 0:
-                adjR = +self.adj
-            elif adjL < 0 and self.output_layer[0].encode_output(frame) > self.output_layer[1].encode_output(frame):
-                adjR = +self.adj
+            if self.output_layer[1].calculate_angle(frame,1) > -100:
+                adjR = self.adj
             else:
-                adjR = +self.adj # thesis seems incorrect here. re-check
+                adjR = 0
         else:
             adjR = self.output_layer[1].calculate_reward(y_data[1],frame,index=1)
-            if adjR > 0:
-                adjL = +self.adj
-            elif adjR < 0 and self.output_layer[1].encode_output(frame) > self.output_layer[0].encode_output(frame):
-                adjL = +self.adj
+            if self.output_layer[0].calculate_angle(frame, 0) < 100:
+                adjL = self.adj
             else:
-                adjL = +self.adj
+                adjL = 0
         return adjL,adjR
 
 
@@ -424,7 +422,6 @@ class SNN():
                 delta_w_2 = val_rij*self.hidden_layer[counter1].delta_w[counter2] # obtained using new stdp function
                 #print('hidden : ',delta_w,val_stdp,val_eta,val_gij,val_rij)
                 weight_changes[0][counter1][counter2] = delta_w_2
-        #print('sums : ',sum5,sum2,sum3,sum4,sum1)
         for counter1,output_neuron in enumerate(self.W[1]):
             for counter2, hidden_neuron in enumerate(output_neuron):
                 val_gij = gij(self.W[1][counter1][counter2])
@@ -433,14 +430,13 @@ class SNN():
                 val_rij = total_reward[1][counter1][counter2]
                 delta_w = val_rij*val_eta*val_gij#*val_stdp
                 delta_w_2 = val_rij*self.output_layer[counter1].delta_w[counter2] # obtained using new stdp function
-                print('op : ',delta_w_2,val_rij)#,val_stdp,val_eta,val_gij,val_rij)
+                #print('op : ',delta_w_2,val_rij)#,val_stdp,val_eta,val_gij,val_rij)
                 weight_changes[1][counter1][counter2] = delta_w_2
-        #print('sums : ', sum5, sum2, sum3, sum4, sum1)
         for counter1,layer in enumerate(self.W):
             for counter2,sublayer in enumerate(layer):
                 for counter3,weight in enumerate(sublayer):
                     self.W[counter1][counter2][counter3] = self.W[counter1][counter2][counter3] + weight_changes[counter1][counter2][counter3]
-        return #total_reward
+        return
 
 
 
@@ -450,44 +446,35 @@ class SNN():
 if __name__ == '__main__':
     snn = SNN()
     data = snn.gen_training_data(n=N)
-    #for frame in data:
-    #    print(frame)
-    data = [data[3]]#,data[1]]#,data[0]]#,data[0]]
+    data = [data[0]]#,data[1]]#,data[0]]#,data[0]]
     curr_ep = 0
+    op = [[], []]
     for epoch in range(EPOCHS):
         print('epoch : ',epoch)
-        #curr_ep = 0
+        curr_ep = 0
         for data_frame in data:
             print('trained frame : ',data_frame)
             for i in range(50):
-                tmat_input,tmat_hidden = snn.forward_pass(x_input=data_frame[0:4])
+                tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep)
+            print('eta : ',eta_val(curr_ep))
             snn.backward_pass(frame=snn.frame,y_data=data_frame[4:6],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
             snn.reset()
             curr_ep = curr_ep + 1
         data_frame = data[0]
         for i in range(50):
-            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4])
+            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep)
         print(data_frame)
+        op0 = snn.output_layer[0].calculate_angle(snn.frame,0)
+        op1 = snn.output_layer[1].calculate_angle(snn.frame,1)
+        op[0].append(op0)
+        op[1].append(op1)
         print(snn.output_layer[0].calculate_angle(snn.frame,0), snn.output_layer[1].calculate_angle(snn.frame,1))
         snn.reset()
+    print(op[0])
+    pyplot.plot(range(0,len(op[0])),op[0])
+    pyplot.show()
     print('delta W : ',snn.hidden_layer[0].delta_w)
 
 
-    '''
-    for data_frame in data:
-        for i in range(50):
-            tmat_input,tmat_hidden = snn.forward_pass(x_input=data_frame[0:3])
-        curr_ep = curr_ep + 1
-        print(curr_ep)
-        snn.backward_pass(frame=snn.frame,y_data=data_frame[3:5],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
-        snn.reset()
-    # simple test
-    for i in range(50):
-        tmat_input,tmat_hidden = snn.forward_pass(x_input=data[0][0:3])
-    print(tmat_input,tmat_hidden)
-    print(data[0])
-    print(snn.W)
-    print(snn.output_layer[0].calculate_angle(50),snn.output_layer[1].calculate_angle(50))
-    '''
 
 
