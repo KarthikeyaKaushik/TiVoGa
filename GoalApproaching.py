@@ -2,17 +2,17 @@ import numpy as np
 import math
 from matplotlib import pyplot
 import random
-N = 1
+N = 2
 WMAX = 3
 C1 = 1/WMAX
-EPMAX = N # online calculation
-EMAX = .2
-EMIN = 0.05
+EMAX = 1
+EMIN = 0.2
 MAX_STDP = 8
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 200
+EPOCHS = 400
+EPMAX = EPOCHS # online calculation
 
 TRAIN = True
 
@@ -110,6 +110,9 @@ class HNeuron():
     def reset(self):
         self.tf = []
         self.v = 0
+        self.apre = np.zeros(shape=(INPUT_LAYER))
+        self.apost = 0
+        self.delta_w = np.zeros(shape=(INPUT_LAYER)) # stores the changes associated with each hidden neuron
 
     def alpha(self,t):
         return (self.gmax*t*math.exp(1 - t/self.ts))/self.ts
@@ -194,6 +197,9 @@ class ONeuron():
     def reset(self):
         self.v = 0
         self.tf = []
+        self.apre = np.zeros(shape=(HIDDEN_LAYER))
+        self.delta_w = np.zeros(shape=(HIDDEN_LAYER))  # stores the changes associated with each hidden neuron
+        self.apost = 0
 
     def psp(self,w,tmat,t,n_index): # w is only one row of the weight matrix representing connections between two layers.
         psp = 0 # t is the current time frame
@@ -349,7 +355,7 @@ class SNN():
         print('data gen done.')
         return data
 
-    def forward_pass(self,x_input,ep):
+    def forward_pass(self,x_input,ep,train=False):
         tmat_input = []
         tmat_hidden = []
         for i in range(INPUT_LAYER):
@@ -363,11 +369,12 @@ class SNN():
         for i in range(OUTPUT_LAYER):
             self.output_layer[i].update(self.W[1],tmat_hidden,self.frame,i)
 
-        for i in range(HIDDEN_LAYER):
-            self.hidden_layer[i].stdp2(tmat_input,self.frame,ep,weights=self.W[0][i])
+        if train == True:
+            for i in range(HIDDEN_LAYER):
+                self.hidden_layer[i].stdp2(tmat_input,self.frame,ep,weights=self.W[0][i])
 
-        for i in range(OUTPUT_LAYER):
-            self.output_layer[i].stdp2(tmat_hidden,self.frame,ep,weights=self.W[1][i])
+            for i in range(OUTPUT_LAYER):
+                self.output_layer[i].stdp2(tmat_hidden,self.frame,ep,weights=self.W[1][i])
 
         self.frame = self.frame + 1
         return tmat_input,tmat_hidden
@@ -430,7 +437,6 @@ class SNN():
                 val_rij = total_reward[1][counter1][counter2]
                 delta_w = val_rij*val_eta*val_gij#*val_stdp
                 delta_w_2 = val_rij*self.output_layer[counter1].delta_w[counter2] # obtained using new stdp function
-                #print('op : ',delta_w_2,val_rij)#,val_stdp,val_eta,val_gij,val_rij)
                 weight_changes[1][counter1][counter2] = delta_w_2
         for counter1,layer in enumerate(self.W):
             for counter2,sublayer in enumerate(layer):
@@ -446,31 +452,40 @@ class SNN():
 if __name__ == '__main__':
     snn = SNN()
     data = snn.gen_training_data(n=N)
-    data = [data[0]]#,data[1]]#,data[0]]#,data[0]]
+    data = [data[0],data[1]]#,data[0]]#,data[0]]
     curr_ep = 0
     op = [[], []]
     for epoch in range(EPOCHS):
         print('epoch : ',epoch)
-        curr_ep = 0
         for data_frame in data:
             print('trained frame : ',data_frame)
             for i in range(50):
-                tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep)
-            print('eta : ',eta_val(curr_ep))
+                tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=True)
+            #print('eta : ',eta_val(curr_ep))
             snn.backward_pass(frame=snn.frame,y_data=data_frame[4:6],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
             snn.reset()
-            curr_ep = curr_ep + 1
+            #curr_ep = curr_ep + 1
         data_frame = data[0]
         for i in range(50):
-            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep)
+            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=False)
         print(data_frame)
         op0 = snn.output_layer[0].calculate_angle(snn.frame,0)
         op1 = snn.output_layer[1].calculate_angle(snn.frame,1)
         op[0].append(op0)
         op[1].append(op1)
-        print(snn.output_layer[0].calculate_angle(snn.frame,0), snn.output_layer[1].calculate_angle(snn.frame,1))
+        print(op0, op1)
         snn.reset()
-    print(op[0])
+        #curr_ep = curr_ep + 1
+    print('for data frame : ',data[1])
+    data_frame = data[1]
+    for i in range(50):
+        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
+    print(data_frame)
+    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+    print('output : ',op0,op1)
+    pyplot.plot(range(0,len(op[1])),op[1])
+    pyplot.show()
     pyplot.plot(range(0,len(op[0])),op[0])
     pyplot.show()
     print('delta W : ',snn.hidden_layer[0].delta_w)
