@@ -2,7 +2,7 @@ import numpy as np
 import math
 from matplotlib import pyplot
 import random
-N = 2
+N = 25
 WMAX = 3
 C1 = 1/WMAX
 EMAX = 1
@@ -102,8 +102,8 @@ class HNeuron():
         self.apre = np.zeros(shape=(INPUT_LAYER))
         self.delta_w = np.zeros(shape=(INPUT_LAYER)) # stores the changes associated with each hidden neuron
         self.apost = 0
-        self.Apre = 0.1 # see if this needs to be changed
-        self.Apost = 0.105 # see if this needs to be changed
+        self.Apre = 0.4 # see if this needs to be changed
+        self.Apost = 0.42 # see if this needs to be changed
         self.taupre = 10
         self.taupost = 10
 
@@ -284,7 +284,7 @@ class SNN():
         hidden_weights = np.random.rand(OUTPUT_LAYER, HIDDEN_LAYER)*WMAX
         ip_weights = np.random.rand(HIDDEN_LAYER,INPUT_LAYER)*WMAX
         test = [ip_weights,hidden_weights]
-        self.W = test#[[[1,1,1],[1,1,1],[1,1,1],[1,1,1]],[[1,1,1,1],[1,1,1,1]]] # self.W[0] for layer1-2, self.W[1] for layer 2-3
+        self.W = test
         self.input_layer = []
         self.hidden_layer = []
         self.output_layer = []
@@ -319,9 +319,6 @@ class SNN():
         if x[1] < 0: ip[3] = abs(x[1])
         elif x[1] >= 0: ip[1] = x[1]
 
-        if ip[0] == 0 and ip[1] == 0 and ip[2] == 0 and ip[3] == 0:
-            ip = [0,1,1] # worst case scenario
-            print('this happens!')
         return ip
 
     def process_output(self,x):
@@ -337,13 +334,13 @@ class SNN():
         elif x[2] > 0: op[0],op[1] = 180,-np.clip(np.arcsin(x[1])*180/np.pi,10,90)
         return op
 
-    def gen_training_data(self,n = N):
+    def gen_training_data(self,n):
         '''
         :param n: number of datapoints to be generated
         :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
         '''
         print('Generating training data ...')
-        data = np.zeros(shape=(500,6))
+        data = np.zeros(shape=(n,6))
         for i in range(n):
             r1,r2 = random.randint(-50,50),random.randint(-50,50)
             if r1 == 0  and r2 == 0:
@@ -380,7 +377,6 @@ class SNN():
         return tmat_input,tmat_hidden
 
     def calc_adj(self,y_data,frame):
-        print('encodings : ',self.output_layer[0].encode_output(frame), self.output_layer[1].encode_output(frame))
         if y_data[0] < 180:
             adjL = self.output_layer[0].calculate_reward(y_data[0],frame,index=0)
             if self.output_layer[1].calculate_angle(frame,1) > -100:
@@ -410,7 +406,6 @@ class SNN():
         for i in range(HIDDEN_LAYER):
             reward_op[0][i] = y0_reward
             reward_op[1][i] = y1_reward
-        #print(reward_op)
 
         reward_hidden = np.zeros((HIDDEN_LAYER,INPUT_LAYER))
         for counter,hidden_layer in enumerate(reward_hidden):
@@ -418,24 +413,14 @@ class SNN():
             reward_hidden[counter] = [reward,reward,reward,reward]
         total_reward = [reward_hidden,reward_op]
         weight_changes = [np.zeros((HIDDEN_LAYER,INPUT_LAYER)),np.zeros((OUTPUT_LAYER,HIDDEN_LAYER))]
-        sum1,sum2,sum3,sum4,sum5 = 0,0,0,0,0
         for counter1,hidden_neuron in enumerate(self.W[0]):
             for counter2,ip_neuron in enumerate(hidden_neuron):
-                val_gij = gij(self.W[0][counter1][counter2])
-                val_eta = eta_val(curr_ep)
-                val_stdp = self.hidden_layer[counter1].stdp(tmat_input)
                 val_rij = total_reward[0][counter1][counter2]
-                delta_w = val_rij*val_eta*val_gij#*val_stdp
                 delta_w_2 = val_rij*self.hidden_layer[counter1].delta_w[counter2] # obtained using new stdp function
-                #print('hidden : ',delta_w,val_stdp,val_eta,val_gij,val_rij)
                 weight_changes[0][counter1][counter2] = delta_w_2
         for counter1,output_neuron in enumerate(self.W[1]):
             for counter2, hidden_neuron in enumerate(output_neuron):
-                val_gij = gij(self.W[1][counter1][counter2])
-                val_eta = eta_val(curr_ep)
-                val_stdp = self.output_layer[counter1].stdp(tmat_hidden)
                 val_rij = total_reward[1][counter1][counter2]
-                delta_w = val_rij*val_eta*val_gij#*val_stdp
                 delta_w_2 = val_rij*self.output_layer[counter1].delta_w[counter2] # obtained using new stdp function
                 weight_changes[1][counter1][counter2] = delta_w_2
         for counter1,layer in enumerate(self.W):
@@ -452,43 +437,46 @@ class SNN():
 if __name__ == '__main__':
     snn = SNN()
     data = snn.gen_training_data(n=N)
-    data = [data[0],data[1]]#,data[0]]#,data[0]]
     curr_ep = 0
     op = [[], []]
+    errors = []
+    accuracies = []
     for epoch in range(EPOCHS):
-        print('epoch : ',epoch)
         for data_frame in data:
-            print('trained frame : ',data_frame)
             for i in range(50):
                 tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=True)
-            #print('eta : ',eta_val(curr_ep))
             snn.backward_pass(frame=snn.frame,y_data=data_frame[4:6],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
             snn.reset()
-            #curr_ep = curr_ep + 1
-        data_frame = data[0]
-        for i in range(50):
-            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=False)
-        print(data_frame)
-        op0 = snn.output_layer[0].calculate_angle(snn.frame,0)
-        op1 = snn.output_layer[1].calculate_angle(snn.frame,1)
-        op[0].append(op0)
-        op[1].append(op1)
-        print(op0, op1)
-        snn.reset()
-        #curr_ep = curr_ep + 1
-    print('for data frame : ',data[1])
-    data_frame = data[1]
-    for i in range(50):
-        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
-    print(data_frame)
-    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-    print('output : ',op0,op1)
-    pyplot.plot(range(0,len(op[1])),op[1])
+        curr_ep = curr_ep + 1
+        '''every 10 epochs perform a training accuracy - number of correct turns/N'''
+        if (1 == 1):
+            accuracy = 0
+            error = 0
+            for data_frame in data:
+                for i in range(50):
+                    tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
+                op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+                op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+                turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
+                d_op0 = data_frame[4]
+                d_op1 = data_frame[5]
+                turn_actual = 1*(abs(d_op0) > abs(d_op1))
+                if turn_predicted == turn_actual:
+                    error = error + 1
+                    if turn_predicted == 0:
+                        accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
+                    else:
+                        accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
+                snn.reset()
+            error = error / N
+            errors.append(error)
+            accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
+            accuracies.append(accuracy)
+            print('for epoch, error, accuracy : ',epoch,error,accuracy)
+    pyplot.plot(range(0,len(errors)),errors)
     pyplot.show()
-    pyplot.plot(range(0,len(op[0])),op[0])
+    pyplot.plot(range(0,len(accuracies)),accuracies)
     pyplot.show()
-    print('delta W : ',snn.hidden_layer[0].delta_w)
 
 
 
