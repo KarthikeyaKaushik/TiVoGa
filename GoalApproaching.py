@@ -5,16 +5,16 @@ import random
 N = 25
 WMAX = 3
 C1 = 1/WMAX
-EMAX = 1
+EMAX = .8
 EMIN = 0.2
 MAX_STDP = 8
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 400
+EPOCHS = 100
 EPMAX = EPOCHS # online calculation
 
-TRAIN = True
+TRAIN = False
 
 '''
 DISCLAIMER : Comments do not necessarily reflect ground truths. Please forgive me. :p
@@ -441,42 +441,71 @@ if __name__ == '__main__':
     op = [[], []]
     errors = []
     accuracies = []
-    for epoch in range(EPOCHS):
-        for data_frame in data:
-            for i in range(50):
-                tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=True)
-            snn.backward_pass(frame=snn.frame,y_data=data_frame[4:6],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
-            snn.reset()
-        curr_ep = curr_ep + 1
-        '''every 10 epochs perform a training accuracy - number of correct turns/N'''
-        if (1 == 1):
-            accuracy = 0
-            error = 0
+    if (TRAIN):
+        print('training  ...............')
+        for epoch in range(EPOCHS):
             for data_frame in data:
                 for i in range(50):
-                    tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
-                op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-                op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-                turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
-                d_op0 = data_frame[4]
-                d_op1 = data_frame[5]
-                turn_actual = 1*(abs(d_op0) > abs(d_op1))
-                if turn_predicted == turn_actual:
-                    error = error + 1
-                    if turn_predicted == 0:
-                        accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
-                    else:
-                        accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
+                    tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4],ep=curr_ep,train=True)
+                snn.backward_pass(frame=snn.frame,y_data=data_frame[4:6],tmat_input=tmat_input,tmat_hidden=tmat_hidden,curr_ep=curr_ep)
                 snn.reset()
-            error = error / N
-            errors.append(error)
-            accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
-            accuracies.append(accuracy)
-            print('for epoch, error, accuracy : ',epoch,error,accuracy)
-    pyplot.plot(range(0,len(errors)),errors)
-    pyplot.show()
-    pyplot.plot(range(0,len(accuracies)),accuracies)
-    pyplot.show()
+            curr_ep = curr_ep + 1
+            '''every 10 epochs perform a training accuracy - number of correct turns/N'''
+            if (1 == 1):
+                accuracy = 0
+                error = 0
+                max_accuracy = 0
+                for data_frame in data:
+                    for i in range(50):
+                        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
+                    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+                    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+                    turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
+                    d_op0 = data_frame[4]
+                    d_op1 = data_frame[5]
+                    turn_actual = 1*(abs(d_op0) > abs(d_op1))
+                    if turn_predicted == turn_actual:
+                        error = error + 1
+                        if turn_predicted == 0:
+                            accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
+                        else:
+                            accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
+                        if max_accuracy < accuracy:
+                            # save the model
+                            W = snn.W
+                    snn.reset()
+                error = error / N
+                errors.append(error)
+                accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
+                accuracies.append(accuracy)
+                print('for epoch, error, accuracy : ',epoch,error,accuracy)
+
+        dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
+        np.save(dir, W)
+        pyplot.plot(range(0,len(errors)),errors)
+        pyplot.show()
+        pyplot.plot(range(0,len(accuracies)),accuracies)
+        pyplot.show()
+        print(W)
+    else:
+        print('testing ..........')
+        dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
+        W = np.load(dir + '.npy')
+        snn.W = W
+        print(snn.W)
+        while (True): # put condition here
+            snn.reset()
+            # data_frame - 4*1 vector
+            data_frame = []
+            curr_ep = 0
+            for i in range(50):
+                tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
+            op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+            op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+
+
+
+
 
 
 
