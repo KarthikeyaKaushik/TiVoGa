@@ -145,8 +145,8 @@ def callback_get_tail_coords(msg):
         snake_tail_pos = [0.0, 0.0]
     if record_mode == 1:
         for i in range(0,17)
-            gravity_center[0] = gravity_center[0] + msg.pose[i].position.x
-            gravity_center[1] = gravity_center[1] + msg.pose[i].position.y
+            gravity_center[0] = gravity_center[0] + msg.pose[i+1].position.x
+            gravity_center[1] = gravity_center[1] + msg.pose[i+1].position.y
         gravity_center = [gravity_center[0]/17, gravity_center[1]/17]
         snake_tail_pos = [msg.pose[17].position.x, msg.pose[17].position.y]
     return
