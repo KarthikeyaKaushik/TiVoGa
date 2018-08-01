@@ -20,6 +20,10 @@ s = socket.socket()
 host = socket.gethostname()
 port = 10501
 s.bind((host, port))
+s.listen(1)
+connection, addr = s.accept()
+
+print "Got connectione from", addr
 
 def choose_data():
     global record_mode
@@ -56,6 +60,7 @@ def callback_calc_vector(msg):
     global target_captured
     global dir_vector
     global mov_vector
+    global connection
     snake_tmp_pos = [0.0, 0.0]
     rotated_vector = [0.0, 0.0]
 
@@ -113,6 +118,18 @@ def callback_calc_vector(msg):
             [angle0,angle1] = GoalApproaching.snn_testing(result_array, W)
             print(angle0,angle1)
        #print("the result array is (%f %f %f %f\n"%(result_array[0], result_array[1], result_array[2], result_array[3]))
+
+# two angles - [x,y] 
+# choose the smaller of the two angles,
+# the index of the smaller angle is the direction of turn. ie., (x,y) - x has index 0, y has index 1 
+# => index 0 - turn left, index 1 turn right.
+# if the minimum angle < 10, ignore.
+            movement = 0
+            if angle0<angle1 and angle0>10:
+                movement = 1
+            elif angle1<angle0 and angle1>10:
+                movement = 2
+            connection.send(movement)
     return
 
 
