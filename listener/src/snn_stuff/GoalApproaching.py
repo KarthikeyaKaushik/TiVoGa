@@ -2,7 +2,7 @@ import numpy as np
 import math
 from matplotlib import pyplot
 import random
-N = 100
+N = 25
 WMAX = 3
 C1 = 1/WMAX
 EMAX = .8
@@ -13,7 +13,7 @@ INPUT_LAYER = 4
 OUTPUT_LAYER = 2
 EPOCHS = 100
 EPMAX = EPOCHS # online calculation
-TESTING_N = 50
+
 TRAIN = False
 
 '''
@@ -334,13 +334,11 @@ class SNN():
         elif x[2] > 0: op[0],op[1] = 180,-np.clip(np.arcsin(x[1])*180/np.pi,10,90)
         return op
 
-    def gen_training_data(self,n,training=True):
+    def gen_training_data(self,n):
         '''
         :param n: number of datapoints to be generated
         :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
         '''
-        if training==False:
-            random.seed(998) # different seed from training data
         print('Generating training data ...')
         data = np.zeros(shape=(n,6))
         for i in range(n):
@@ -439,13 +437,10 @@ class SNN():
 if __name__ == '__main__':
     snn = SNN()
     data = snn.gen_training_data(n=N)
-    testing_data = snn.gen_training_data(n=TESTING_N,training=False)
     curr_ep = 0
     op = [[], []]
     errors = []
     accuracies = []
-    test_errors = []
-    test_accuracies = []
     if (TRAIN):
         print('training  ...............')
         for epoch in range(EPOCHS):
@@ -479,62 +474,30 @@ if __name__ == '__main__':
                             # save the model
                             W = snn.W
                     snn.reset()
-                error = (error / N)*100
+                error = error / N
                 errors.append(error)
                 accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
                 accuracies.append(accuracy)
-                print('for epoch, training error, training accuracy : ',epoch,error,accuracy)
-
-            if (2 == 2):
-                test_accuracy = 0
-                test_error = 0
-                test_max_accuracy = 0
-                snn.reset()
-                for data_frame in testing_data:
-                    for i in range(50):
-                        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
-                    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-                    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-                    turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
-                    d_op0 = data_frame[4]
-                    d_op1 = data_frame[5]
-                    turn_actual = 1*(abs(d_op0) > abs(d_op1))
-                    if turn_predicted == turn_actual:
-                        test_error = test_error + 1
-                        if turn_predicted == 0:
-                            test_accuracy = test_accuracy + abs((abs(op0) - abs(d_op0)))
-                        else:
-                            test_accuracy = test_accuracy + abs((abs(op1) - abs(d_op1)))
-                    snn.reset()
-                test_error = (test_error / TESTING_N)*100
-                test_errors.append(test_error)
-                test_accuracy = (1-(test_accuracy / (80 * TESTING_N)))*100 # max (max angle - min angle) percentage
-                test_accuracies.append(test_accuracy)
-                print('for epoch, testing error, testing accuracy : ',epoch,test_error,test_accuracy)
-
-
+                print('for epoch, error, accuracy : ',epoch,error,accuracy)
 
         dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
         np.save(dir, W)
-        pyplot.plot(range(0,len(errors)),errors,'b-',range(0,len(accuracies)),accuracies,'b--',range(0,len(test_errors)),
-                    test_errors,'r-',range(0,len(test_accuracies)),test_accuracies,'r--')
+        pyplot.plot(range(0,len(errors)),errors)
+        pyplot.show()
+        pyplot.plot(range(0,len(accuracies)),accuracies)
         pyplot.show()
         print(W)
-    else:
-        print('testing ..........')
-        dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
-        W = np.load(dir + '.npy')
-        snn.W = W
-        print(snn.W)
-        snn.reset()
-        # data_frame - 4*1 vector
-        data_frame = [.823,0,0,.568]
-        curr_ep = 0
-        for i in range(50):
-            tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
-        op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-        op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-        print(op0,op1)
+def snn_testing(data_frame, weights):
+    snn = SNN()
+    snn.W = weights
+    snn.reset()
+    # data_frame - 4*1 vector
+    curr_ep = 0
+    for i in range(50):
+        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
+    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+    return [op0,op1]
 
 
 
