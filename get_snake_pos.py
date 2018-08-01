@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import rospy
 import math
-import socket
-import os.path
 from math import pow
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
@@ -15,8 +13,6 @@ dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp.npy')
 from snn_stuff import GoalApproaching
 W = np.load(dir)
 
-##keep in mind that client only expect integers, so anything other 
-##will result in an exception
 s = socket.socket()
 host = socket.gethostname()
 port = 10500
@@ -92,47 +88,81 @@ def callback_calc_vector(msg):
         # 400 = 0.5 sec
         # 160 = 200 msec
         # 40 = 50 msec
-        if time_passed == 800:
+        if time_passed == 400:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
+            snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
+            snake_tail_pos[1] = snake_tail_pos[1] - snake_head_pos[1]
+            target_pos[0] = target_pos[0] - snake_head_pos[0]
+            target_pos[1] = target_pos[1] - snake_head_pos[1]
+            snake_head_pos = [0.0,0.0]
+
+            vector_k = [0,0]
+
+            vector_k[0] = snake_head_pos[0] - snake_tail_pos[0]
+            vector_k[1] = snake_head_pos[1] - snake_tail_pos[1]
+
+            normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
+
+            vector_k[0] = vector_k[0]/normalisation_constant
+            vector_k[1] = vector_k[1]/normalisation_constant
+
+            y_changed = [0,1]
+
+            Rotation_matrix = [[0,0],[0,0]]
+            Rotation_matrix[0][0] = vector_k[1]
+            Rotation_matrix[1][1] = vector_k[1]
+
+            Rotation_matrix[0][1] = -vector_k[0]
+            Rotation_matrix[1][0] = vector_k[0]
+
+            final_vector = [0, 0]
+
+            final_vector[0] = Rotation_matrix[0][0] * target_pos[0] + Rotation_matrix[0][1] * target_pos[1]
+            final_vector[1] = Rotation_matrix[1][0] * target_pos[0] + Rotation_matrix[1][1] * target_pos[1]
+
+            normalisation_constant = math.sqrt(final_vector[0] ** 2 + final_vector[1] ** 2)
+            final_vector = [final_vector[0] / normalisation_constant, final_vector[1] / normalisation_constant]
+
+            result_array = [0,0,0,0]
+            if final_vector[0] >= 0: result_array[0] = final_vector[0]
+            if final_vector[1] >= 0: result_array[1] = final_vector[1]
+            if final_vector[0] < 0: result_array[2] = abs(final_vector[0])
+            if final_vector[1] < 0: result_array[3] = abs(final_vector[1])
+
             # calculating the head-target vector and general movement vector in "ground_plane" coordinates' system
-            dir_vector[0] = (snake_head_pos[0] - target_pos[0]) / math.sqrt(
-                pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-            dir_vector[1] = (snake_head_pos[1] - target_pos[1]) / math.sqrt(
-                pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-            mov_vector[0] = (snake_head_pos[0] - snake_tail_pos[0]) / math.sqrt(
-                pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-            mov_vector[1] = (snake_head_pos[1] - snake_tail_pos[1]) / math.sqrt(
-                pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-            # rotating...
-            rotated_vector[0] = mov_vector[0]*dir_vector[0] - mov_vector[1]*dir_vector[1]
-            rotated_vector[1] = mov_vector[1]*dir_vector[0] + mov_vector[0]*dir_vector[1]
-            # the result vector for the NN!
-            result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
-            result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
-            result_array[2] = abs(rotated_vector[0]) if rotated_vector[0] < 0 else 0
-	    result_array[3] = abs(rotated_vector[1])  if rotated_vector[1] < 0 else 0
-            # just writing result vector in file
-            #data.write("%s %s %s %s\n" % (result_array[0], result_array[1], result_array[2], result_array[3]))
-            print(result_array)
-            print(W)
-            [angle0,angle1] = GoalApproaching.snn_testing(result_array, W)
-            print(angle0,angle1)
+         #    dir_vector[0] = (snake_head_pos[0] - target_pos[0]) / math.sqrt(
+         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
+         #    dir_vector[1] = (snake_head_pos[1] - target_pos[1]) / math.sqrt(
+         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
+         #    mov_vector[0] = (snake_head_pos[0] - snake_tail_pos[0]) / math.sqrt(
+         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
+         #    mov_vector[1] = (snake_head_pos[1] - snake_tail_pos[1]) / math.sqrt(
+         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
+         #    # rotating...
+         #    rotated_vector[0] = mov_vector[0]*dir_vector[0] - mov_vector[1]*dir_vector[1]
+         #    rotated_vector[1] = mov_vector[1]*dir_vector[0] + mov_vector[0]*dir_vector[1]
+         #    # the result vector for the NN!
+         #    result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
+         #    result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
+         #    result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
+	    # result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
+        [angle0,angle1] = GoalApproaching.snn_testing(W, result_array)
+        print(angle0,angle1)
+        # just writing result vector in file
+        data.write("%s %s %s %s\n" % (result_array[0], result_array[1], result_array[2], result_array[3]))
+
        #print("the result array is (%f %f %f %f\n"%(result_array[0], result_array[1], result_array[2], result_array[3]))
 
-# two angles - [x,y] 
-# choose the smaller of the two angles,
-# the index of the smaller angle is the direction of turn. ie., (x,y) - x has index 0, y has index 1 
-# => index 0 - turn left, index 1 turn right.
-# if the minimum angle < 10, ignore.
-            angle0 = abs(angle0)
-            angle1 = abs(angle1)
-            movement = 0
-            if angle0<angle1 and angle0>30:
-                movement = 2
-            elif angle1<angle0 and angle1>30:
-                movement = 1
-            connection.send(str(movement))
+        angle0 = abs(angle0)
+        angle1 = abs(angle1)
+        movement = 0
+        if angle0<angle1 and angle0>30:
+            movement = 1
+        elif angle1<angle0 and angle1>30:
+            movement = 2
+        connection.send(str(movement))
+
     return
 
 
@@ -164,6 +194,7 @@ def listener():
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
 
+
 if __name__ == '__main__':
 
     # initializing global variables 
@@ -189,6 +220,7 @@ if __name__ == '__main__':
     record_mode = 0
     target_captured = 0
     record_stopped = 0
+
 	# setting up and running our console menu
     thread = Thread(target=choose_data)
     thread.start()
