@@ -53,6 +53,7 @@ def read_movement():
         s.connect((host,port))
         while not rospy.is_shutdown():
             new_movement = s.recv(8)
+            print new_movement
             try:
                 new_movement = int(new_movement)
                 if new_movement<0 or new_movement>5:

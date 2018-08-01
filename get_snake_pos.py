@@ -2,6 +2,7 @@
 import rospy
 import math
 import socket
+import os.path
 from math import pow
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
@@ -10,7 +11,7 @@ from geometry_msgs.msg import Pose, Point
 from threading import Thread
 import numpy as np
 
-dir = '/home/natalia/snake_ws/src/listener/src/snn_stuff/snn_temp.npy' # just change it to local copy
+dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp.npy')
 from snn_stuff import GoalApproaching
 W = np.load(dir)
 
@@ -18,7 +19,7 @@ W = np.load(dir)
 ##will result in an exception
 s = socket.socket()
 host = socket.gethostname()
-port = 10501
+port = 10500
 s.bind((host, port))
 s.listen(1)
 connection, addr = s.accept()
@@ -91,7 +92,7 @@ def callback_calc_vector(msg):
         # 400 = 0.5 sec
         # 160 = 200 msec
         # 40 = 50 msec
-        if time_passed == 40:
+        if time_passed == 800:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
             # calculating the head-target vector and general movement vector in "ground_plane" coordinates' system
@@ -124,12 +125,14 @@ def callback_calc_vector(msg):
 # the index of the smaller angle is the direction of turn. ie., (x,y) - x has index 0, y has index 1 
 # => index 0 - turn left, index 1 turn right.
 # if the minimum angle < 10, ignore.
+            angle0 = abs(angle0)
+            angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>10:
+            if angle0<angle1 and angle0>30:
                 movement = 1
-            elif angle1<angle0 and angle1>10:
+            elif angle1<angle0 and angle1>30:
                 movement = 2
-            connection.send(movement)
+            connection.send(str(movement))
     return
 
 

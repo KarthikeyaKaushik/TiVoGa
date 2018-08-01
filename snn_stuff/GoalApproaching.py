@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import os.path
 from matplotlib import pyplot
 import random
 N = 25
@@ -261,7 +262,7 @@ class ONeuron():
     def encode_output(self,t):
         y = 0
         for tf in self.tf:
-            y = y + ((50 - tf)/50)*math.exp(0.05*(tf - t))
+            y = y + ((50 - tf)/50.0)*math.exp(0.05*(tf - t))
         return y
 
     def calculate_angle(self,t,index):
@@ -481,13 +482,14 @@ if __name__ == '__main__':
                 accuracies.append(accuracy)
                 print('for epoch, error, accuracy : ',epoch,error,accuracy)
 
-        dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
+        dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp.npy')
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
         pyplot.show()
         pyplot.plot(range(0,len(accuracies)),accuracies)
         pyplot.show()
         print(W)
+
 def snn_testing(data_frame, weights):
     snn = SNN()
     snn.W = weights
