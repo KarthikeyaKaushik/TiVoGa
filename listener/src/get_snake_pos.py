@@ -82,23 +82,62 @@ def callback_calc_vector(msg):
         if time_passed == 400:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
+            snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
+            snake_tail_pos[1] = snake_tail_pos[1] - snake_head_pos[1]
+            target_pos[0] = target_pos[0] - snake_head_pos[0]
+            target_pos[1] = target_pos[1] - snake_head_pos[1]
+            snake_head_pos = [0.0,0.0]
+
+            vector_k = [0,0]
+
+            vector_k[0] = snake_head_pos[0] - snake_tail_pos[0]
+            vector_k[1] = snake_head_pos[1] - snake_tail_pos[1]
+
+            normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
+
+            vector_k[0] = vector_k[0]/normalisation_constant
+            vector_k[1] = vector_k[1]/normalisation_constant
+
+            y_changed = [0,1]
+
+            Rotation_matrix = [[0,0],[0,0]]
+            Rotation_matrix[0][0] = vector_k[1]
+            Rotation_matrix[1][1] = vector_k[1]
+
+            Rotation_matrix[0][1] = -vector_k[0]
+            Rotation_matrix[1][0] = vector_k[0]
+
+            final_vector = [0, 0]
+
+            final_vector[0] = Rotation_matrix[0][0] * target_pos[0] + Rotation_matrix[0][1] * target_pos[1]
+            final_vector[1] = Rotation_matrix[1][0] * target_pos[0] + Rotation_matrix[1][1] * target_pos[1]
+
+            normalisation_constant = math.sqrt(final_vector[0] ** 2 + final_vector[1] ** 2)
+            final_vector = [final_vector[0] / normalisation_constant, final_vector[1] / normalisation_constant]
+
+            result_array = [0,0,0,0]
+            if final_vector[0] >= 0: result_array[0] = final_vector[0]
+            if final_vector[1] >= 0: result_array[1] = final_vector[1]
+            if final_vector[0] < 0: result_array[2] = abs(final_vector[0])
+            if final_vector[1] < 0: result_array[3] = abs(final_vector[1])
+
             # calculating the head-target vector and general movement vector in "ground_plane" coordinates' system
-            dir_vector[0] = (snake_head_pos[0] - target_pos[0]) / math.sqrt(
-                pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-            dir_vector[1] = (snake_head_pos[1] - target_pos[1]) / math.sqrt(
-                pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-            mov_vector[0] = (snake_head_pos[0] - snake_tail_pos[0]) / math.sqrt(
-                pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-            mov_vector[1] = (snake_head_pos[1] - snake_tail_pos[1]) / math.sqrt(
-                pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-            # rotating...
-            rotated_vector[0] = mov_vector[0]*dir_vector[0] - mov_vector[1]*dir_vector[1]
-            rotated_vector[1] = mov_vector[1]*dir_vector[0] + mov_vector[0]*dir_vector[1]
-            # the result vector for the NN!
-            result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
-            result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
-            result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
-	    result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
+         #    dir_vector[0] = (snake_head_pos[0] - target_pos[0]) / math.sqrt(
+         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
+         #    dir_vector[1] = (snake_head_pos[1] - target_pos[1]) / math.sqrt(
+         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
+         #    mov_vector[0] = (snake_head_pos[0] - snake_tail_pos[0]) / math.sqrt(
+         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
+         #    mov_vector[1] = (snake_head_pos[1] - snake_tail_pos[1]) / math.sqrt(
+         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
+         #    # rotating...
+         #    rotated_vector[0] = mov_vector[0]*dir_vector[0] - mov_vector[1]*dir_vector[1]
+         #    rotated_vector[1] = mov_vector[1]*dir_vector[0] + mov_vector[0]*dir_vector[1]
+         #    # the result vector for the NN!
+         #    result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
+         #    result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
+         #    result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
+	    # result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
         [angle0,angle1] = GoalApproaching.snn_testing(W, result_array)
         print(angle0,angle1)
         # just writing result vector in file

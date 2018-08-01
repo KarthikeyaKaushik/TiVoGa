@@ -431,6 +431,18 @@ class SNN():
 
 
 
+def snn_testing(data_frame, weights):
+    snn = SNN()
+    snn.W = weights
+    snn.reset()
+    print('testing')
+    # data_frame - 4*1 vector
+    curr_ep = 0
+    for i in range(50):
+        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
+    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+    return [op0,op1]
 
 
 
@@ -487,17 +499,8 @@ if __name__ == '__main__':
         pyplot.plot(range(0,len(accuracies)),accuracies)
         pyplot.show()
         print(W)
-def snn_testing(data_frame, weights):
-    snn = SNN()
-    snn.W = weights
-    snn.reset()
-    # data_frame - 4*1 vector
-    curr_ep = 0
-    for i in range(50):
-        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
-    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-    return [op0,op1]
+    else:
+        print(snn_testing([0.707,0.707,0,0],np.load('/Users/karthikeyakaushik/Desktop/snn_temp.npy')))
 
 
 
