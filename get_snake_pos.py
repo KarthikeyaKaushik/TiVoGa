@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import rospy
 import math
+import os.path
+import socket
 from math import pow
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
@@ -88,6 +90,7 @@ def callback_calc_vector(msg):
         # 400 = 0.5 sec
         # 160 = 200 msec
         # 40 = 50 msec
+        
         if time_passed == 400:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
@@ -146,22 +149,19 @@ def callback_calc_vector(msg):
          #    result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
          #    result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
          #    result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
-	    # result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
-        [angle0,angle1] = GoalApproaching.snn_testing(W, result_array)
-        print(angle0,angle1)
-        # just writing result vector in file
-        data.write("%s %s %s %s\n" % (result_array[0], result_array[1], result_array[2], result_array[3]))
+         #  result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
+            [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
+            print(angle0,angle1)
 
-       #print("the result array is (%f %f %f %f\n"%(result_array[0], result_array[1], result_array[2], result_array[3]))
 
-        angle0 = abs(angle0)
-        angle1 = abs(angle1)
-        movement = 0
-        if angle0<angle1 and angle0>30:
-            movement = 1
-        elif angle1<angle0 and angle1>30:
-            movement = 2
-        connection.send(str(movement))
+            angle0 = abs(angle0)
+            angle1 = abs(angle1)
+            movement = 0
+            if angle0<angle1 and angle0>10:
+                movement = 2
+            elif angle1<angle0 and angle1>10:
+                movement = 1
+            connection.send(str(movement))
 
     return
 
@@ -225,7 +225,5 @@ if __name__ == '__main__':
     thread = Thread(target=choose_data)
     thread.start()
 	# opening the document to store our input - can just delete it if not needed
-    with open('position_data.txt', 'w') as data:
-	# running the ros node
-        listener()
+    listener()
     thread.join()
