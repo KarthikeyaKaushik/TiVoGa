@@ -5,15 +5,15 @@ import random
 N = 50
 WMAX = 3
 C1 = 1/WMAX
-EMAX = .8
-EMIN = 0.2
+EMAX = .2
+EMIN = 0.05
 MAX_STDP = 8
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 200
+EPOCHS = 100
 EPMAX = EPOCHS # online calculation
-SPLIT = 1 # data split for training on high accuracy requirement stuff
+SPLIT = 0 # data split for training on high accuracy requirement stuff
 TRAIN = False
 
 '''
@@ -361,15 +361,16 @@ class SNN():
         print('Generating training data ...')
         data = np.zeros(shape=(n,6))
         n1 = round(n*SPLIT)
+        print(n1)
         n2 = n - n1
         for i in range(n1):
             r1,r2 = random.randint(-50,50),random.randint(0,50)
             if r1 == 0  and r2 == 0:
-                r1, r2 = random.randint(-25, 25), random.randint(25, 50)
+                r1, r2 = random.randint(-25, 25), random.randint(0, 50)
             ip = self.process_input((r1,r2))
             op = self.process_output(ip)
-            if min(abs(op[0]),abs(op[1])) < 10:
-                continue
+            #if min(abs(op[0]),abs(op[1])) < 10:
+            #    continue
             temp = np.append(ip,op)
             data[i] = temp
         for i in range(n2):
@@ -483,10 +484,10 @@ def snn_testing(data_frame, weights):
 
 if __name__ == '__main__':
     snn = SNN()
-    data = snn.gen_training_data_updated(n=N)
-    #for i in range(50):
-    #    print(data[i])
-    #curr_ep = 0
+    data = snn.gen_training_data(n=N)
+    for i in range(50):
+        print(data[i])
+    curr_ep = 0
     op = [[], []]
     errors = []
     accuracies = []
@@ -500,10 +501,11 @@ if __name__ == '__main__':
                 snn.reset()
             curr_ep = curr_ep + 1
             '''every 10 epochs perform a training accuracy - number of correct turns/N'''
+            max_accuracy = 0
+            max_error = 0
             if (1 == 1):
                 accuracy = 0
                 error = 0
-                max_accuracy = 0
                 for data_frame in data:
                     for i in range(50):
                         tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
@@ -519,16 +521,17 @@ if __name__ == '__main__':
                             accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
                         else:
                             accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
-                        if max_accuracy < accuracy:
-                            # save the model
-                            W = snn.W
                     snn.reset()
                 error = error / N
                 errors.append(error)
                 accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
+                if max_accuracy < accuracy and max_error <= error:
+                    #W = snn.W # saving the model
+                    max_error = error
+                    max_accuracy = accuracy
                 accuracies.append(accuracy)
                 print('for epoch, error, accuracy : ',epoch,error,accuracy)
-
+        W = snn.W
         dir = '/Users/karthikeyakaushik/Desktop/snn_temp_testing'
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
@@ -537,7 +540,7 @@ if __name__ == '__main__':
         pyplot.show()
         print(W)
     else:
-        ip = [.2,.97]
+        ip = [.1678,.9858]
         nor_constant = math.sqrt(ip[0]**2 + ip[1]**2)
         ip = [ip[0]/nor_constant,ip[1]/nor_constant]
         print(ip)
@@ -546,7 +549,7 @@ if __name__ == '__main__':
         if ip[1] >= 0: result_array[1] = ip[1]
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
-
+        print(result_array)
         print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Desktop/snn_temp_testing.npy')))
 
 
