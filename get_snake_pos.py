@@ -93,7 +93,7 @@ def callback_calc_vector(msg):
         # 160 = 200 msec
         # 40 = 50 msec
         
-        if time_passed == 100:
+        if time_passed == 3000:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
             snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
@@ -160,9 +160,9 @@ def callback_calc_vector(msg):
             angle0 = abs(angle0)
             angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>25:
+            if angle0<angle1 and angle0>60:
                 movement = 2
-            elif angle1<angle0 and angle1>25:
+            elif angle1<angle0 and angle1>60:
                 movement = 1
             connection.send(str(movement))
 
