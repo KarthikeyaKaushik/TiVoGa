@@ -485,9 +485,8 @@ def snn_testing(data_frame, weights):
 
 if __name__ == '__main__':
     snn = SNN()
-    data = snn.gen_training_data(n=N)
-    for i in range(50):
-        print(data[i])
+    #for i in range(50):
+    #    print(data[i])
     curr_ep = 0
     op = [[], []]
     errors = []
@@ -541,7 +540,7 @@ if __name__ == '__main__':
         pyplot.show()
         print(W)
     else:
-        ip = [.1678,.9858]
+        ip = [.1872,.9823]
         nor_constant = math.sqrt(ip[0]**2 + ip[1]**2)
         ip = [ip[0]/nor_constant,ip[1]/nor_constant]
         print(ip)
@@ -551,7 +550,7 @@ if __name__ == '__main__':
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
         print(result_array)
-        print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Desktop/snn_temp_testing.npy')))
+        print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Documents/TUM course stuff/Semester 2/Bio-snake-robot/project/TiVoGa/snn_stuff/snn_temp_testing.npy')))
 
 
 
