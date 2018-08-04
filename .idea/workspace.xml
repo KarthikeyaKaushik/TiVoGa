@@ -16,8 +16,8 @@
       <file leaf-file-name="GoalApproaching.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/snn_stuff/GoalApproaching.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="188">
-              <caret line="263" column="35" lean-forward="false" selection-start-line="263" selection-start-column="35" selection-end-line="263" selection-end-column="35" />
+            <state relative-caret-position="114">
+              <caret line="470" column="30" lean-forward="false" selection-start-line="470" selection-start-column="30" selection-end-line="470" selection-end-column="30" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -182,8 +182,8 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/snn_stuff/GoalApproaching.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="188">
-          <caret line="263" column="35" lean-forward="false" selection-start-line="263" selection-start-column="35" selection-end-line="263" selection-end-column="35" />
+        <state relative-caret-position="114">
+          <caret line="470" column="30" lean-forward="false" selection-start-line="470" selection-start-column="30" selection-end-line="470" selection-end-column="30" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>

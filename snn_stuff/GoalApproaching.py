@@ -468,6 +468,7 @@ class SNN():
 
 
 def snn_testing(data_frame, weights):
+    print('weights : ',weights)
     snn = SNN()
     snn.W = weights
     snn.reset()
