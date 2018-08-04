@@ -261,7 +261,7 @@ class ONeuron():
     def encode_output(self,t):
         y = 0
         for tf in self.tf:
-            y = y + ((50 - tf)/50)*math.exp(0.05*(tf - t))
+            y = y + ((50 - tf)/50.0)*math.exp(0.05*(tf - t))
         return y
 
     def calculate_angle(self,t,index):
