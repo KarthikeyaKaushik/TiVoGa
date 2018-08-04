@@ -2,7 +2,7 @@ import numpy as np
 import math
 from matplotlib import pyplot
 import random
-N = 25
+N = 50
 WMAX = 3
 C1 = 1/WMAX
 EMAX = .8
@@ -11,9 +11,9 @@ MAX_STDP = 8
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 100
+EPOCHS = 200
 EPMAX = EPOCHS # online calculation
-
+SPLIT = 1 # data split for training on high accuracy requirement stuff
 TRAIN = False
 
 '''
@@ -352,6 +352,41 @@ class SNN():
         print('data gen done.')
         return data
 
+    def gen_training_data_updated(self,n):
+        '''
+
+        :param n: number of datapoints to be generated
+        :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
+        '''
+        print('Generating training data ...')
+        data = np.zeros(shape=(n,6))
+        n1 = round(n*SPLIT)
+        n2 = n - n1
+        for i in range(n1):
+            r1,r2 = random.randint(-50,50),random.randint(0,50)
+            if r1 == 0  and r2 == 0:
+                r1, r2 = random.randint(-25, 25), random.randint(25, 50)
+            ip = self.process_input((r1,r2))
+            op = self.process_output(ip)
+            if min(abs(op[0]),abs(op[1])) < 10:
+                continue
+            temp = np.append(ip,op)
+            data[i] = temp
+        for i in range(n2):
+            r1,r2 = random.randint(-50,50),random.randint(50,50)
+            if r1 == 0  and r2 == 0:
+                r1, r2 = random.randint(-50, 50), random.randint(50, 50)
+            ip = self.process_input((r1,r2))
+            op = self.process_output(ip)
+            temp = np.append(ip,op)
+            data[i+n1] = temp
+        #np.random.shuffle(data)
+        print('data generation done.')
+        return data
+
+
+
+
     def forward_pass(self,x_input,ep,train=False):
         tmat_input = []
         tmat_hidden = []
@@ -448,8 +483,10 @@ def snn_testing(data_frame, weights):
 
 if __name__ == '__main__':
     snn = SNN()
-    data = snn.gen_training_data(n=N)
-    curr_ep = 0
+    data = snn.gen_training_data_updated(n=N)
+    #for i in range(50):
+    #    print(data[i])
+    #curr_ep = 0
     op = [[], []]
     errors = []
     accuracies = []
@@ -492,7 +529,7 @@ if __name__ == '__main__':
                 accuracies.append(accuracy)
                 print('for epoch, error, accuracy : ',epoch,error,accuracy)
 
-        dir = '/Users/karthikeyakaushik/Desktop/snn_temp'
+        dir = '/Users/karthikeyakaushik/Desktop/snn_temp_testing'
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
         pyplot.show()
@@ -500,7 +537,7 @@ if __name__ == '__main__':
         pyplot.show()
         print(W)
     else:
-        ip = [5,10]
+        ip = [.2,.97]
         nor_constant = math.sqrt(ip[0]**2 + ip[1]**2)
         ip = [ip[0]/nor_constant,ip[1]/nor_constant]
         print(ip)
@@ -510,7 +547,7 @@ if __name__ == '__main__':
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
 
-        print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Desktop/snn_temp.npy')))
+        print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Desktop/snn_temp_testing.npy')))
 
 
 
