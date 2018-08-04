@@ -1,17 +1,18 @@
 import numpy as np
 import math
+import os
 from matplotlib import pyplot
 import random
 N = 50
 WMAX = 3
-C1 = 1/WMAX
+C1 = 1.0/WMAX
 EMAX = .2
 EMIN = 0.05
-MAX_STDP = 8
+MAX_STDP = 8.0
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 100
+EPOCHS = 100.0
 EPMAX = EPOCHS # online calculation
 SPLIT = 0 # data split for training on high accuracy requirement stuff
 TRAIN = False
@@ -57,8 +58,8 @@ to calculate rewards -
 '''
 
 def heavyside(t):
-    if t > 0: return 1
-    else: return 0
+    if t > 0: return 1.0
+    else: return 0.0
 
 def gij(w):
     return 1 - C1*w*math.exp(-1*abs(w)/WMAX)
@@ -72,54 +73,54 @@ def eta_val(epcurr):
 
 class INeuron():
     def __init__(self):
-        self.u = 0
+        self.u = 0.0
         self.a = 0.2
         self.b = 0.025
-        self.vth = 1
+        self.vth = 1.0
         self.tf = []
 
     def update(self,x,t):
         du = self.a * x + self.b  # assuming dt = 1
         if self.u >= self.vth:
-            self.u = 0
+            self.u = 0.0
             self.tf.append(t) # appending the time the spike occured
         else: self.u = self.u + du
         return
 
     def reset(self):
         self.tf = []
-        self.u = 0
+        self.u = 0.0
 
 class HNeuron():
     def __init__(self):
-        self.v = 0
-        self.vth = 30
-        self.tref = 3
-        self.tm = 10
-        self.gmax = 10
-        self.ts = 5
+        self.v = 0.0
+        self.vth = 30.0
+        self.tref = 3.0
+        self.tm = 10.0
+        self.gmax = 10.0
+        self.ts = 5.0
         self.tf = []
         self.apre = np.zeros(shape=(INPUT_LAYER))
         self.delta_w = np.zeros(shape=(INPUT_LAYER)) # stores the changes associated with each hidden neuron
-        self.apost = 0
+        self.apost = 0.0
         self.Apre = 0.4 # see if this needs to be changed
         self.Apost = 0.42 # see if this needs to be changed
-        self.taupre = 10
-        self.taupost = 10
+        self.taupre = 10.0
+        self.taupost = 10.0
 
     def reset(self):
         self.tf = []
-        self.v = 0
+        self.v = 0.0
         self.apre = np.zeros(shape=(INPUT_LAYER))
-        self.apost = 0
+        self.apost = 0.0
         self.delta_w = np.zeros(shape=(INPUT_LAYER)) # stores the changes associated with each hidden neuron
 
     def alpha(self,t):
         return (self.gmax*t*math.exp(1 - t/self.ts))/self.ts
 
     def calc_stdp(self,dt): # change this during optimisation
-        if dt >= 0: return 0.4*math.exp(-dt/10)
-        else: return -0.42*math.exp(dt/10)
+        if dt >= 0: return 0.4*math.exp(-dt/10.0)
+        else: return -0.42*math.exp(dt/10.0)
 
     def stdp2(self,tmat,t,curr_ep,weights):
         '''
@@ -147,7 +148,7 @@ class HNeuron():
 
 
     def stdp(self,tmat):
-        stdp = 0
+        stdp = 0.0
         for tif in self.tf:
             for n_tif in tmat:
                 for n_tf in n_tif:
@@ -177,29 +178,29 @@ class HNeuron():
 
 class ONeuron():
     def __init__(self):
-        self.v = 0
-        self.vth = 25
-        self.tref = 3
-        self.tm = 10
-        self.gmax = 10
-        self.ts = 5
+        self.v = 0.0
+        self.vth = 25.0
+        self.tref = 3.0
+        self.tm = 10.0
+        self.gmax = 10.0
+        self.ts = 5.0
         self.tf = []
         self.apre = np.zeros(shape=(HIDDEN_LAYER))
         self.delta_w = np.zeros(shape=(HIDDEN_LAYER)) # stores the changes associated with each hidden neuron
-        self.apost = 0
+        self.apost = 0.0
         self.Apre = .1 # see if this needs to be changed
         self.Apost = .105 # see if this needs to be changed
-        self.taupre = 10
-        self.taupost = 10
+        self.taupre = 10.0
+        self.taupost = 10.0
 
 
 
     def reset(self):
-        self.v = 0
+        self.v = 0.0
         self.tf = []
         self.apre = np.zeros(shape=(HIDDEN_LAYER))
         self.delta_w = np.zeros(shape=(HIDDEN_LAYER))  # stores the changes associated with each hidden neuron
-        self.apost = 0
+        self.apost = 0.0
 
     def psp(self,w,tmat,t,n_index): # w is only one row of the weight matrix representing connections between two layers.
         psp = 0 # t is the current time frame
@@ -219,12 +220,12 @@ class ONeuron():
         dv = (-self.v + self.psp(w,tmat,t,n_index))/self.tm
         if self.v < self.vth: self.v = self.v + dv
         else:
-            self.v = 0
+            self.v = 0.0
             self.tf.append(t)
 
     def calc_stdp(self,dt): # change this during optimisation
-        if dt >= 0: return 0.4*math.exp(-dt/10)
-        else: return -0.42*math.exp(dt/10)
+        if dt >= 0: return 0.4*math.exp(-dt/10.0)
+        else: return -0.42*math.exp(dt/10.0)
 
     def stdp2(self,tmat,t,curr_ep,weights):
         '''
@@ -266,12 +267,12 @@ class ONeuron():
 
     def calculate_angle(self,t,index):
         if index == 0:
-            return 90*self.encode_output(t)
+            return 90.0*self.encode_output(t)
         else:
-            return -90*self.encode_output(t)
+            return -90.0*self.encode_output(t)
 
     def calculate_reward(self,y_data,t,index):
-        return (abs(y_data) - abs(self.calculate_angle(t,index)))/110 # max angle = 90
+        return (abs(y_data) - abs(self.calculate_angle(t,index)))/110.0 # max angle = 90
 
 
 
@@ -279,8 +280,6 @@ class SNN():
     def __init__(self):
         self.T = 50
         self.frame = 0 # equivalent to dt - goes up to self.T
-        random.seed(999)
-        np.random.seed(999)
         hidden_weights = np.random.rand(OUTPUT_LAYER, HIDDEN_LAYER)*WMAX
         ip_weights = np.random.rand(HIDDEN_LAYER,INPUT_LAYER)*WMAX
         test = [ip_weights,hidden_weights]
@@ -418,13 +417,13 @@ class SNN():
             if self.output_layer[1].calculate_angle(frame,1) > -100:
                 adjR = self.adj
             else:
-                adjR = 0
+                adjR = 0.0
         else:
             adjR = self.output_layer[1].calculate_reward(y_data[1],frame,index=1)
             if self.output_layer[0].calculate_angle(frame, 0) < 100:
                 adjL = self.adj
             else:
-                adjL = 0
+                adjL = 0.0
         return adjL,adjR
 
 
@@ -468,15 +467,13 @@ class SNN():
 
 
 def snn_testing(data_frame, weights):
-    print('weights : ',weights)
     snn = SNN()
     snn.W = weights
     snn.reset()
-    print('testing')
     # data_frame - 4*1 vector
     curr_ep = 0
     for i in range(50):
-        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
+        _, _ = snn.forward_pass(x_input=data_frame, ep=curr_ep, train=False)
     op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
     op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
     return [op0,op1]
@@ -492,6 +489,8 @@ if __name__ == '__main__':
     errors = []
     accuracies = []
     if (TRAIN):
+        random.seed(999)
+        np.random.seed(999)
         print('training  ...............')
         for epoch in range(EPOCHS):
             for data_frame in data:
@@ -504,8 +503,8 @@ if __name__ == '__main__':
             max_accuracy = 0
             max_error = 0
             if (1 == 1):
-                accuracy = 0
-                error = 0
+                accuracy = 0.0
+                error = 0.0
                 for data_frame in data:
                     for i in range(50):
                         tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
@@ -532,7 +531,8 @@ if __name__ == '__main__':
                 accuracies.append(accuracy)
                 print('for epoch, error, accuracy : ',epoch,error,accuracy)
         W = snn.W
-        dir = '/Users/karthikeyakaushik/Desktop/snn_temp_testing'
+        dir = os.getcwd()
+        dir = dir + '/snn_stuff/snn_temp_testing'
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
         pyplot.show()
@@ -543,14 +543,14 @@ if __name__ == '__main__':
         ip = [.1872,.9823]
         nor_constant = math.sqrt(ip[0]**2 + ip[1]**2)
         ip = [ip[0]/nor_constant,ip[1]/nor_constant]
-        print(ip)
         result_array = [0,0,0,0]
         if ip[0] >= 0: result_array[0] = ip[0]
         if ip[1] >= 0: result_array[1] = ip[1]
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
-        print(result_array)
-        print(snn_testing(result_array,np.load('/Users/karthikeyakaushik/Documents/TUM course stuff/Semester 2/Bio-snake-robot/project/TiVoGa/snn_stuff/snn_temp_testing.npy')))
+        cwd = os.getcwd()
+        weight_file = cwd + '/snn_stuff/snn_temp_testing.npy'
+        print(snn_testing(result_array,np.load(weight_file)))
 
 
 
