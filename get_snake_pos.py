@@ -11,9 +11,6 @@ from geometry_msgs.msg import Pose, Point
 from threading import Thread
 import numpy as np
 
-dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp.npy')
-from snn_stuff import GoalApproaching
-W = np.load(dir)
 
 s = socket.socket()
 host = socket.gethostname()
@@ -22,7 +19,12 @@ s.bind((host, port))
 s.listen(1)
 connection, addr = s.accept()
 
-print "Got connectione from", addr
+print "Got connection from", addr
+print "test"
+dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing.npy')
+from snn_stuff import GoalApproaching
+W = np.load(dir)
+print "W : ",W
 
 def choose_data():
     global record_mode
@@ -91,7 +93,7 @@ def callback_calc_vector(msg):
         # 160 = 200 msec
         # 40 = 50 msec
         
-        if time_passed == 400:
+        if time_passed == 100:
             time_passed = 0
             snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
             snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
@@ -150,6 +152,7 @@ def callback_calc_vector(msg):
          #    result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
          #    result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
          #  result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
+            print('direction : ',result_array)
             [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
             print(angle0,angle1)
 
@@ -157,9 +160,9 @@ def callback_calc_vector(msg):
             angle0 = abs(angle0)
             angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>10:
+            if angle0<angle1 and angle0>25:
                 movement = 2
-            elif angle1<angle0 and angle1>10:
+            elif angle1<angle0 and angle1>25:
                 movement = 1
             connection.send(str(movement))
 
