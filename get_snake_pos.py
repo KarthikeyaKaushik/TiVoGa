@@ -19,6 +19,8 @@ port = 10500
 s.bind((host, port))
 s.listen(1)
 connection, addr = s.accept()
+gravity_center = [0.0,0.0]
+movement_vector = [0.0,0.0]
 
 print "Got connection from", addr
 print "test"
@@ -71,8 +73,6 @@ def callback_normalize(msg):
         target_captured = 0
         time_passed = 0
         target_pos = [0.0, 0.0]
-        gravity_center = [0.0, 0.0]
-        movement_vector = [0.0, 0.0]
 
     if record_mode == 1:
         # we start our calculations by probing the target coordinates
@@ -84,31 +84,26 @@ def callback_normalize(msg):
         # counting our time
         time_passed += 1
 
-        # getting the current snake head coordinates and comparing them to stored ones
-        #snake_tmp_pos[0] = msg.pose[1].position.x
-        #snake_tmp_pos[1] = msg.pose[1].position.y
-        #if abs(snake_tmp_pos[0] - snake_head_pos[0]) > 0.2 or abs(snake_tmp_pos[1] - snake_head_pos[1]) > 0.2:
 
         #short list of number meanings:
         # 800 = 1 sec
         # 400 = 0.5 sec
         # 160 = 200 msec
         # 40 = 50 msec
-        
         if time_passed == 8:
             time_passed = 0
-            #snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
-            #snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
-            #snake_tail_pos[1] = snake_tail_pos[1] - snake_head_pos[1]
-            target_pos[0] = target_pos[0] - gravity_center[0]
-            target_pos[1] = target_pos[1] - gravity_center[1]
-            #snake_head_pos = [0.0,0.0]
+            target_relative_pos = [0.0,0.0]
+            target_relative_pos[0] = target_pos[0] - gravity_center[0]
+            target_relative_pos[1] = target_pos[1] - gravity_center[1]
+            print "\n\n\n\n\n\n"
+            print "Target\n"
+            print target_relative_pos, '\n'
 
-            #vector_k = [0,0]
             vector_k = movement_vector
-
-            #vector_k[0] = snake_head_pos[0] - snake_tail_pos[0]
-            #vector_k[1] = snake_head_pos[1] - snake_tail_pos[1]
+            print "Movement vector\n"
+            print movement_vector, '\n'
+            print "Center\n"
+            print gravity_center, '\n'
 
             normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
 
@@ -126,47 +121,49 @@ def callback_normalize(msg):
 
             final_vector = [0, 0]
 
-            final_vector[0] = Rotation_matrix[0][0] * target_pos[0] + Rotation_matrix[0][1] * target_pos[1]
-            final_vector[1] = Rotation_matrix[1][0] * target_pos[0] + Rotation_matrix[1][1] * target_pos[1]
+            final_vector[0] = Rotation_matrix[0][0] * target_relative_pos[0] + Rotation_matrix[0][1] * target_relative_pos[1]
+            final_vector[1] = Rotation_matrix[1][0] * target_relative_pos[0] + Rotation_matrix[1][1] * target_relative_pos[1]
 
             normalisation_constant = math.sqrt(final_vector[0] ** 2 + final_vector[1] ** 2)
             final_vector = [final_vector[0] / normalisation_constant, final_vector[1] / normalisation_constant]
 
+            #disabling the nn
+            '''
             result_array = [0,0,0,0]
-            if final_vector[0] >= 0: result_array[0] = final_vector[0]
-            if final_vector[1] >= 0: result_array[1] = final_vector[1]
-            if final_vector[0] < 0: result_array[2] = abs(final_vector[0])
-            if final_vector[1] < 0: result_array[3] = abs(final_vector[1])
+            if final_vector[0] >= 0:
+                result_array[0] = final_vector[0]
+            else:
+                result_array[2] = abs(final_vector[0])
 
-            # calculating the head-target vector and general movement vector in "ground_plane" coordinates' system
-         #    dir_vector[0] = (snake_head_pos[0] - target_pos[0]) / math.sqrt(
-         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-         #    dir_vector[1] = (snake_head_pos[1] - target_pos[1]) / math.sqrt(
-         #        pow(snake_head_pos[0] - target_pos[0], 2) + pow(snake_head_pos[1] - target_pos[1], 2))
-         #    mov_vector[0] = (snake_head_pos[0] - snake_tail_pos[0]) / math.sqrt(
-         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-         #    mov_vector[1] = (snake_head_pos[1] - snake_tail_pos[1]) / math.sqrt(
-         #        pow(snake_head_pos[0] - snake_tail_pos[0], 2) + pow(snake_head_pos[1] - snake_tail_pos[1], 2))
-         #    # rotating...
-         #    rotated_vector[0] = mov_vector[0]*dir_vector[0] - mov_vector[1]*dir_vector[1]
-         #    rotated_vector[1] = mov_vector[1]*dir_vector[0] + mov_vector[0]*dir_vector[1]
-         #    # the result vector for the NN!
-         #    result_array[0] = rotated_vector[0] if rotated_vector[0] > 0 else 0
-         #    result_array[1] = rotated_vector[1]  if rotated_vector[1] > 0 else 0
-         #    result_array[2] = rotated_vector[0] if rotated_vector[0] < 0 else 0
-         #  result_array[3] = rotated_vector[1]  if rotated_vector[1] < 0 else 0
-            print('direction : ',result_array)
+            if final_vector[1] >= 0:
+                result_array[1] = final_vector[1]
+            else:
+                result_array[3] = abs(final_vector[1])
+
+            print('direction : ',result_array), '\n'
             [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
-            print(angle0,angle1)
-
-
+            print(angle0,angle1), '\n'
             angle0 = abs(angle0)
             angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>45:
+            if angle0<angle1 and angle0>35:
                 movement = 2
-            elif angle1<angle0 and angle1>45:
+            elif angle1<angle0 and angle1>35:
                 movement = 1
+            '''
+            #formal method solution
+            print final_vector
+            movement = 0
+            if final_vector[1]>0:
+                if final_vector[0]/final_vector[1]>0.17:
+                    movement = 2
+                elif final_vector[0]/final_vector[1]<-0.17:
+                    movement = 1
+            else:
+                if final_vector[0]>0:
+                    movement = 2
+                else:
+                    movement = 1
             connection.send(str(movement))
 
     return
@@ -175,10 +172,6 @@ def callback_normalize(msg):
 def callback_get_vector(msg):
     global gravity_center
     global movement_vector
-    # just constantly (with ~200hz frequency) getting the tail coords
-    if record_mode == 0:
-        gravity_center = [0.0, 0.0]
-        movement_vector = [0.0, 0.0]
     if record_mode == 1:
         for i in range(1,18):
             gravity_center[0] += msg.pose[i].position.x

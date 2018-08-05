@@ -61,7 +61,7 @@ def read_movement():
                 movement = new_movement
                 if new_movement==1 or new_movement==2:
                     ### 150 = 30 degrees
-                    time_goal = 75
+                    time_goal = 50
             except ValueError:
                 raise ValueError('Movement must be an int')
         s.close()
