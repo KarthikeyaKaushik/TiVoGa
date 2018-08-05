@@ -127,7 +127,9 @@ def callback_normalize(msg):
             normalisation_constant = math.sqrt(final_vector[0] ** 2 + final_vector[1] ** 2)
             final_vector = [final_vector[0] / normalisation_constant, final_vector[1] / normalisation_constant]
 
+
             #disabling the nn
+            #don't delete
             '''
             result_array = [0,0,0,0]
             if final_vector[0] >= 0:
@@ -155,9 +157,9 @@ def callback_normalize(msg):
             print final_vector
             movement = 0
             if final_vector[1]>0:
-                if final_vector[0]/final_vector[1]>0.17:
+                if final_vector[0]/final_vector[1]>0.6:
                     movement = 2
-                elif final_vector[0]/final_vector[1]<-0.17:
+                elif final_vector[0]/final_vector[1]<-0.6:
                     movement = 1
             else:
                 if final_vector[0]>0:
