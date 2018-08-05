@@ -13,6 +13,7 @@ import numpy as np
 
 
 s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 host = socket.gethostname()
 port = 10500
 s.bind((host, port))
@@ -160,9 +161,9 @@ def callback_calc_vector(msg):
             angle0 = abs(angle0)
             angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>60:
+            if angle0<angle1 and angle0>30:
                 movement = 2
-            elif angle1<angle0 and angle1>60:
+            elif angle1<angle0 and angle1>30:
                 movement = 1
             connection.send(str(movement))
 
