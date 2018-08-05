@@ -53,9 +53,9 @@ Type 'exit' to quit.\n""")
             print "Invalid Input"
 
 
-def callback_calc_vector(msg):
-    global snake_head_pos
-    global snake_tail_pos
+def callback_normalize(msg):
+    global gravity_center
+    global movement_vector
     global target_pos
     global time_passed
     global record_stopped
@@ -71,7 +71,8 @@ def callback_calc_vector(msg):
         target_captured = 0
         time_passed = 0
         target_pos = [0.0, 0.0]
-        snake_head_pos = [0.0, 0.0]
+        gravity_center = [0.0, 0.0]
+        movement_vector = [0.0, 0.0]
 
     if record_mode == 1:
         # we start our calculations by probing the target coordinates
@@ -94,19 +95,20 @@ def callback_calc_vector(msg):
         # 160 = 200 msec
         # 40 = 50 msec
         
-        if time_passed == 3000:
+        if time_passed == 8:
             time_passed = 0
-            snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
-            snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
-            snake_tail_pos[1] = snake_tail_pos[1] - snake_head_pos[1]
-            target_pos[0] = target_pos[0] - snake_head_pos[0]
-            target_pos[1] = target_pos[1] - snake_head_pos[1]
-            snake_head_pos = [0.0,0.0]
+            #snake_head_pos = [msg.pose[1].position.x, msg.pose[1].position.y]
+            #snake_tail_pos[0] = snake_tail_pos[0] - snake_head_pos[0]
+            #snake_tail_pos[1] = snake_tail_pos[1] - snake_head_pos[1]
+            target_pos[0] = target_pos[0] - gravity_center[0]
+            target_pos[1] = target_pos[1] - gravity_center[1]
+            #snake_head_pos = [0.0,0.0]
 
-            vector_k = [0,0]
+            #vector_k = [0,0]
+            vector_k = movement_vector
 
-            vector_k[0] = snake_head_pos[0] - snake_tail_pos[0]
-            vector_k[1] = snake_head_pos[1] - snake_tail_pos[1]
+            #vector_k[0] = snake_head_pos[0] - snake_tail_pos[0]
+            #vector_k[1] = snake_head_pos[1] - snake_tail_pos[1]
 
             normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
 
@@ -161,22 +163,32 @@ def callback_calc_vector(msg):
             angle0 = abs(angle0)
             angle1 = abs(angle1)
             movement = 0
-            if angle0<angle1 and angle0>30:
+            if angle0<angle1 and angle0>45:
                 movement = 2
-            elif angle1<angle0 and angle1>30:
+            elif angle1<angle0 and angle1>45:
                 movement = 1
             connection.send(str(movement))
 
     return
 
 
-def callback_get_tail_coords(msg):
-    global snake_tail_pos
+def callback_get_vector(msg):
+    global gravity_center
+    global movement_vector
     # just constantly (with ~200hz frequency) getting the tail coords
     if record_mode == 0:
-        snake_tail_pos = [0.0, 0.0]
+        gravity_center = [0.0, 0.0]
+        movement_vector = [0.0, 0.0]
     if record_mode == 1:
-        snake_tail_pos = [msg.pose[17].position.x, msg.pose[17].position.y]
+        for i in range(1,18):
+            gravity_center[0] += msg.pose[i].position.x
+            gravity_center[1] += msg.pose[i].position.y
+        gravity_center = [gravity_center[0]/17, gravity_center[1]/17]
+        for i in range(1,9):
+            movement_vector[0] += msg.pose[i].position.x - msg.pose[i+9].position.x
+            movement_vector[1] += msg.pose[i].position.y - msg.pose[i+9].position.y
+        movement_vector[0] = movement_vector[0] / 8.0
+        movement_vector[1] = movement_vector[1] / 8.0
     return
 
 
@@ -192,8 +204,8 @@ def listener():
     # we need both rostopics because 'model_states' stores the head and 
     # target coordinates, while 'link_states' stores the coordinates of 
     # a tail module (as well as all the others intermediate modules)
-    rospy.Subscriber("gazebo/model_states", ModelStates, callback_calc_vector)
-    rospy.Subscriber("gazebo/link_states", LinkStates, callback_get_tail_coords)
+    rospy.Subscriber("gazebo/model_states", ModelStates, callback_normalize)
+    rospy.Subscriber("gazebo/link_states", LinkStates, callback_get_vector)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
