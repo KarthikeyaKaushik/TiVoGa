@@ -3,8 +3,10 @@ import math
 import os
 from matplotlib import pyplot
 import random
-N = 50
-WMAX = 3
+N = 90
+WMAX = 20
+WMAX_P = 30
+WMAX_N = -25
 C1 = 1.0/WMAX
 EMAX = .2
 EMIN = 0.05
@@ -12,7 +14,7 @@ MAX_STDP = 8.0
 HIDDEN_LAYER = 4
 INPUT_LAYER = 4
 OUTPUT_LAYER = 2
-EPOCHS = 100.0
+EPOCHS = 100
 EPMAX = EPOCHS # online calculation
 SPLIT = 0 # data split for training on high accuracy requirement stuff
 TRAIN = False
@@ -104,7 +106,7 @@ class HNeuron():
         self.delta_w = np.zeros(shape=(INPUT_LAYER)) # stores the changes associated with each hidden neuron
         self.apost = 0.0
         self.Apre = 0.4 # see if this needs to be changed
-        self.Apost = 0.42 # see if this needs to be changed
+        self.Apost = 0.41 # see if this needs to be changed
         self.taupre = 10.0
         self.taupost = 10.0
 
@@ -179,7 +181,7 @@ class HNeuron():
 class ONeuron():
     def __init__(self):
         self.v = 0.0
-        self.vth = 25.0
+        self.vth = 30.0
         self.tref = 3.0
         self.tm = 10.0
         self.gmax = 10.0
@@ -188,8 +190,8 @@ class ONeuron():
         self.apre = np.zeros(shape=(HIDDEN_LAYER))
         self.delta_w = np.zeros(shape=(HIDDEN_LAYER)) # stores the changes associated with each hidden neuron
         self.apost = 0.0
-        self.Apre = .1 # see if this needs to be changed
-        self.Apost = .105 # see if this needs to be changed
+        self.Apre = .2 # see if this needs to be changed
+        self.Apost = .21 # see if this needs to be changed
         self.taupre = 10.0
         self.taupost = 10.0
 
@@ -280,8 +282,8 @@ class SNN():
     def __init__(self):
         self.T = 50
         self.frame = 0 # equivalent to dt - goes up to self.T
-        hidden_weights = np.random.rand(OUTPUT_LAYER, HIDDEN_LAYER)*WMAX
-        ip_weights = np.random.rand(HIDDEN_LAYER,INPUT_LAYER)*WMAX
+        hidden_weights = np.random.normal(20,3,[OUTPUT_LAYER, HIDDEN_LAYER])
+        ip_weights = np.random.normal(4,1,[HIDDEN_LAYER,INPUT_LAYER])
         test = [ip_weights,hidden_weights]
         self.W = test
         self.input_layer = []
@@ -293,7 +295,7 @@ class SNN():
             self.hidden_layer.append(HNeuron())
         for i in range(OUTPUT_LAYER):
             self.output_layer.append(ONeuron())
-        self.adj = 0.5
+        self.adj = 1
 
     def reset(self):
         for i in range(INPUT_LAYER):
@@ -357,19 +359,17 @@ class SNN():
         :param n: number of datapoints to be generated
         :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
         '''
-        print('Generating training data ...')
+        print('Generating training data using updated data gen...')
         data = np.zeros(shape=(n,6))
         n1 = round(n*SPLIT)
         print(n1)
         n2 = n - n1
         for i in range(n1):
-            r1,r2 = random.randint(-50,50),random.randint(0,50)
+            r1,r2 = random.randint(0,10),random.randint(0,50)
             if r1 == 0  and r2 == 0:
-                r1, r2 = random.randint(-25, 25), random.randint(0, 50)
+                r1, r2 = random.randint(0, 50), random.randint(0, 50)
             ip = self.process_input((r1,r2))
             op = self.process_output(ip)
-            #if min(abs(op[0]),abs(op[1])) < 10:
-            #    continue
             temp = np.append(ip,op)
             data[i] = temp
         for i in range(n2):
@@ -380,9 +380,25 @@ class SNN():
             op = self.process_output(ip)
             temp = np.append(ip,op)
             data[i+n1] = temp
-        #np.random.shuffle(data)
         print('data generation done.')
         return data
+
+    def gen_training_data_circular(self,n=N):
+        skip = 90.0/N
+        print(skip)
+        data = np.zeros(shape=(n,6))
+        for i in range(n):
+            angle = skip*i
+            y = math.sin(angle*math.pi/180)
+            x = math.cos(angle*math.pi/180)
+            print(angle,x)
+            ip = self.process_input((x,y))
+            op = self.process_output(ip)
+            temp = np.append(ip,op)
+            #print(temp)
+            data[i] = temp
+        return  data
+
 
 
 
@@ -462,6 +478,10 @@ class SNN():
             for counter2,sublayer in enumerate(layer):
                 for counter3,weight in enumerate(sublayer):
                     self.W[counter1][counter2][counter3] = self.W[counter1][counter2][counter3] + weight_changes[counter1][counter2][counter3]
+                    if self.W[counter1][counter2][counter3] > WMAX_P:
+                        self.W[counter1][counter2][counter3] = WMAX_P
+                    elif self.W[counter1][counter2][counter3] < WMAX_N:
+                        self.W[counter1][counter2][counter3] = WMAX_N
         return
 
 
@@ -482,8 +502,6 @@ def snn_testing(data_frame, weights):
 
 if __name__ == '__main__':
     snn = SNN()
-    #for i in range(50):
-    #    print(data[i])
     curr_ep = 0
     op = [[], []]
     errors = []
@@ -491,6 +509,7 @@ if __name__ == '__main__':
     if (TRAIN):
         random.seed(999)
         np.random.seed(999)
+        data = snn.gen_training_data_circular(n=N)
         print('training  ...............')
         for epoch in range(EPOCHS):
             for data_frame in data:
@@ -524,15 +543,17 @@ if __name__ == '__main__':
                 error = error / N
                 errors.append(error)
                 accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
+                snn.adj = 1 - error/100.0
                 if max_accuracy < accuracy and max_error <= error:
                     #W = snn.W # saving the model
                     max_error = error
                     max_accuracy = accuracy
                 accuracies.append(accuracy)
                 print('for epoch, error, accuracy : ',epoch,error,accuracy)
+        print(data)
         W = snn.W
         dir = os.getcwd()
-        dir = dir + '/snn_stuff/snn_temp_testing'
+        dir = dir + '/snn_stuff/snn_temp_testing_1'
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
         pyplot.show()
@@ -540,7 +561,7 @@ if __name__ == '__main__':
         pyplot.show()
         print(W)
     else:
-        ip = [.1872,.9823]
+        ip = [5,5]
         nor_constant = math.sqrt(ip[0]**2 + ip[1]**2)
         ip = [ip[0]/nor_constant,ip[1]/nor_constant]
         result_array = [0,0,0,0]
@@ -548,8 +569,9 @@ if __name__ == '__main__':
         if ip[1] >= 0: result_array[1] = ip[1]
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
+        print(result_array)
         cwd = os.getcwd()
-        weight_file = cwd + '/snn_stuff/snn_temp_testing.npy'
+        weight_file = cwd + '/snn_stuff/snn_temp_testing_1.npy'
         print(snn_testing(result_array,np.load(weight_file)))
 
 

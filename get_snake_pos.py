@@ -24,7 +24,7 @@ movement_vector = [0.0,0.0]
 
 print "Got connection from", addr
 print "test"
-dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing.npy')
+dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing_1.npy')
 from snn_stuff import GoalApproaching
 W = np.load(dir)
 print "W : ",W
@@ -90,7 +90,7 @@ def callback_normalize(msg):
         # 400 = 0.5 sec
         # 160 = 200 msec
         # 40 = 50 msec
-        if time_passed == 8:
+        if time_passed == 400:
             time_passed = 0
             target_relative_pos = [0.0,0.0]
             target_relative_pos[0] = target_pos[0] - gravity_center[0]
@@ -139,9 +139,30 @@ def callback_normalize(msg):
                 result_array[1] = final_vector[1]
             else:
                 result_array[3] = abs(final_vector[1])
+            '''
 
+            result_array = [abs(final_vector[0]),abs(final_vector[1]),0,0]
             print('direction : ',result_array), '\n'
             [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
+            print(angle0,angle1), '\n'
+            if final_vector[1] >= 0:
+                if final_vector[0] <= 0:
+                    if abs(angle0)>24:
+                        movement = 1
+                    else: movement = 0
+                else:
+                    if abs(angle0)<24:
+                        movement = 0
+                    else: movement = 2
+            else:
+                if final_vector[0] >= 0:
+                    movement = 2
+                else:
+                    movement = 1
+            connection.send(str(movement))
+
+            # calculating the movement normally
+            '''
             print(angle0,angle1), '\n'
             angle0 = abs(angle0)
             angle1 = abs(angle1)
@@ -151,13 +172,16 @@ def callback_normalize(msg):
             elif angle1<angle0 and angle1>35:
                 movement = 1
             '''
+
             #formal method solution
+
+            '''
             print final_vector
             movement = 0
             if final_vector[1]>0:
-                if final_vector[0]/final_vector[1]>0.17:
+                if final_vector[0]/final_vector[1]>0.6:
                     movement = 2
-                elif final_vector[0]/final_vector[1]<-0.17:
+                elif final_vector[0]/final_vector[1]<-0.6:
                     movement = 1
             else:
                 if final_vector[0]>0:
@@ -165,6 +189,7 @@ def callback_normalize(msg):
                 else:
                     movement = 1
             connection.send(str(movement))
+            '''
 
     return
 
