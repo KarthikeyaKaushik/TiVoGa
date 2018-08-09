@@ -11,23 +11,29 @@ from geometry_msgs.msg import Pose, Point
 from threading import Thread
 import numpy as np
 
-
+# opening a socket on the server side
 s = socket.socket()
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 host = socket.gethostname()
 port = 10500
 s.bind((host, port))
+
+# waiting until we recieve connection from the client (control script) 
 s.listen(1)
 connection, addr = s.accept()
+
+#initialize some global variables
 gravity_center = [0.0,0.0]
 movement_vector = [0.0,0.0]
 
 print "Got connection from", addr
 
+# loading the pre-calculated weights file  for our neural network
 dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing_1.npy')
 from snn_stuff import GoalApproaching
 W = np.load(dir)
 
+# console menu function
 def choose_data():
     global record_mode
     while not rospy.is_shutdown():
@@ -50,7 +56,8 @@ Type 'exit' to quit.\n""")
                 return
             print "Invalid Input"
 
-
+# normalization callback
+# calculating all the vectors and sending them to control script
 def callback_normalize(msg):
     global gravity_center
     global movement_vector
@@ -70,13 +77,12 @@ def callback_normalize(msg):
 
     if record_mode == 1:
         # we start our calculations by probing the target coordinates
-        #if we already have a target then we dont have to get this info again
+        # in order to track the target we poll it's position constantly
 
         target_pos = [msg.pose[2].position.x, msg.pose[2].position.y]
 
         # counting our time
         time_passed += 1
-
 
         #short list of number meanings:
         # 800 = 1 sec
@@ -86,18 +92,21 @@ def callback_normalize(msg):
         if time_passed == 400:
             time_passed = 0
             target_relative_pos = [0.0,0.0]
+
+            # starting to rotate the coordinates of a target
             target_relative_pos[0] = target_pos[0] - gravity_center[0]
             target_relative_pos[1] = target_pos[1] - gravity_center[1]
 
             vector_k = movement_vector
 
-            normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
+            normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2) # normalization constant for a movement vector
 
             vector_k[0] = vector_k[0]/normalisation_constant
             vector_k[1] = vector_k[1]/normalisation_constant
 
             y_changed = [0,1]
 
+            # calculationg the rotation matrix
             Rotation_matrix = [[0,0],[0,0]]
             Rotation_matrix[0][0] = vector_k[1]
             Rotation_matrix[1][1] = vector_k[1]
@@ -105,6 +114,7 @@ def callback_normalize(msg):
             Rotation_matrix[0][1] = -vector_k[0]
             Rotation_matrix[1][0] = vector_k[0]
 
+            # calculating the direction vector
             final_vector = [0, 0]
 
             final_vector[0] = Rotation_matrix[0][0] * target_relative_pos[0] + Rotation_matrix[0][1] * target_relative_pos[1]
@@ -113,35 +123,23 @@ def callback_normalize(msg):
             normalisation_constant = math.sqrt(final_vector[0] ** 2 + final_vector[1] ** 2)
             final_vector = [final_vector[0] / normalisation_constant, final_vector[1] / normalisation_constant]
 
-
-            #disabling the nn
-            #don't delete
-            '''
-            result_array = [0,0,0,0]
-            if final_vector[0] >= 0:
-                result_array[0] = final_vector[0]
-            else:
-                result_array[2] = abs(final_vector[0])
-
-            if final_vector[1] >= 0:
-                result_array[1] = final_vector[1]
-            else:
-                result_array[3] = abs(final_vector[1])
-            '''
-
+            # converting the direction vector in the format understood by the neural network
             result_array = [abs(final_vector[0]),abs(final_vector[1]),0,0]
+
+            # sending the data to a neural network function to get the resulting turning pair of angles
             [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
 
-            print('direction : ',result_array), '\n'
+            print('direction : ',result_array), '\n' # debug output
             print(angle0,angle1), '\n'
 
-            if final_vector[1] >= 0:
+            # interpreting the neural network output
+            if final_vector[1] >= 0: # figuring out the exact quadrant
                 if final_vector[0] <= 0:
-                    if abs(angle0)>24:
+                    if abs(angle0)>24: #checking the threshold
                         movement = 1
                     else: movement = 0
                 else:
-                    if abs(angle0)<24:
+                    if abs(angle0)<24: #checking the threshold
                         movement = 0
                     else: movement = 2
             else:
@@ -149,21 +147,11 @@ def callback_normalize(msg):
                     movement = 2
                 else:
                     movement = 1
+
+            # sending the right movement to the controlling script
             connection.send(str(movement))
 
-            # calculating the movement normally
-            '''
-            print(angle0,angle1), '\n'
-            angle0 = abs(angle0)
-            angle1 = abs(angle1)
-            movement = 0
-            if angle0<angle1 and angle0>35:
-                movement = 2
-            elif angle1<angle0 and angle1>35:
-                movement = 1
-            '''
-
-            #formal method solution
+            #formal method solution - can fully replace the neural network solution
 
             '''
             print final_vector
@@ -183,7 +171,7 @@ def callback_normalize(msg):
 
     return
 
-
+# callback to get all the positions of links and calculate the snake movement vector
 def callback_get_vector(msg):
     global gravity_center
     global movement_vector
@@ -209,9 +197,8 @@ def listener():
 
     rospy.init_node('get_pose', anonymous=True)
 
-    # we need both rostopics because 'model_states' stores the head and 
-    # target coordinates, while 'link_states' stores the coordinates of 
-    # a tail module (as well as all the others intermediate modules)
+    # we need both rostopics because 'model_states' stores the target coordinates,
+    # while 'link_states' stores the coordinates of all the snake link modules
     rospy.Subscriber("gazebo/model_states", ModelStates, callback_normalize)
     rospy.Subscriber("gazebo/link_states", LinkStates, callback_get_vector)
 
@@ -222,7 +209,6 @@ def listener():
 if __name__ == '__main__':
 
     # initializing global variables 
-    # (mb should be moved to some __init__ section of a class and stopped from being global)
     global record_mode
     global time_passed
     time_passed = 0.0
@@ -246,6 +232,6 @@ if __name__ == '__main__':
 	# setting up and running our console menu
     thread = Thread(target=choose_data)
     thread.start()
-	# opening the document to store our input - can just delete it if not needed
+    # starting our listener subscriber node
     listener()
     thread.join()
