@@ -41,7 +41,6 @@ def read_movement():
                 if new_movement==1 or new_movement==2:
                     ### 150 = 30 degrees
                     time_goal = 150
-                print "New movement:" + str(movement)
             except ValueError:
                 if user_input == 'exit':
                     sys.exit()
@@ -53,7 +52,6 @@ def read_movement():
         s.connect((host,port))
         while not rospy.is_shutdown():
             new_movement = s.recv(8)
-            print new_movement
             try:
                 new_movement = int(new_movement)
                 if new_movement<0 or new_movement>5:

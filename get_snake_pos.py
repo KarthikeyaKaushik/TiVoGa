@@ -23,23 +23,19 @@ gravity_center = [0.0,0.0]
 movement_vector = [0.0,0.0]
 
 print "Got connection from", addr
-print "test"
+
 dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing_1.npy')
 from snn_stuff import GoalApproaching
 W = np.load(dir)
-print "W : ",W
 
 def choose_data():
     global record_mode
     while not rospy.is_shutdown():
         user_input = raw_input(
-            """Control of data collection:
+"""Control of data collection:
+
     0:= Pause recording
     1:= Start recording
-    2:= Stop recording -- not implemented yet
-    3:= Continue recording -- not implemented yet
-
-    the new data is saved only if there is a change of position more than 10cm
 
 Type 'exit' to quit.\n""")
         try:
@@ -61,7 +57,6 @@ def callback_normalize(msg):
     global target_pos
     global time_passed
     global record_stopped
-    global target_captured
     global dir_vector
     global mov_vector
     global connection
@@ -70,16 +65,14 @@ def callback_normalize(msg):
 
     if record_mode == 0:
         # just resetting the parameters
-        target_captured = 0
         time_passed = 0
         target_pos = [0.0, 0.0]
 
     if record_mode == 1:
         # we start our calculations by probing the target coordinates
         #if we already have a target then we dont have to get this info again
-        if target_captured == 0:
-            target_pos = [msg.pose[2].position.x, msg.pose[2].position.y]
-            target_captured = 1
+
+        target_pos = [msg.pose[2].position.x, msg.pose[2].position.y]
 
         # counting our time
         time_passed += 1
@@ -95,15 +88,8 @@ def callback_normalize(msg):
             target_relative_pos = [0.0,0.0]
             target_relative_pos[0] = target_pos[0] - gravity_center[0]
             target_relative_pos[1] = target_pos[1] - gravity_center[1]
-            print "\n\n\n\n\n\n"
-            print "Target\n"
-            print target_relative_pos, '\n'
 
             vector_k = movement_vector
-            print "Movement vector\n"
-            print movement_vector, '\n'
-            print "Center\n"
-            print gravity_center, '\n'
 
             normalisation_constant = math.sqrt(vector_k[0]**2 + vector_k[1]**2)
 
@@ -144,9 +130,11 @@ def callback_normalize(msg):
             '''
 
             result_array = [abs(final_vector[0]),abs(final_vector[1]),0,0]
-            print('direction : ',result_array), '\n'
             [angle0,angle1] = GoalApproaching.snn_testing(result_array,W)
+
+            print('direction : ',result_array), '\n'
             print(angle0,angle1), '\n'
+
             if final_vector[1] >= 0:
                 if final_vector[0] <= 0:
                     if abs(angle0)>24:
@@ -236,7 +224,6 @@ if __name__ == '__main__':
     # initializing global variables 
     # (mb should be moved to some __init__ section of a class and stopped from being global)
     global record_mode
-    global target_captured
     global time_passed
     time_passed = 0.0
     global dir_vector
@@ -254,7 +241,6 @@ if __name__ == '__main__':
 
     mode_changed = 0
     record_mode = 0
-    target_captured = 0
     record_stopped = 0
 
 	# setting up and running our console menu
