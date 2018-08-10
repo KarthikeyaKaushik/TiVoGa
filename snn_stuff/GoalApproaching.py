@@ -308,106 +308,45 @@ class SNN():
         self.frame = 0
         return
 
-    def process_input(self,x):
-        '''
-        :param x: non normalised input
-        :return ip: 4 input values - x positive, y positive, x negative, y negative
-        '''
-        x = (x[0] / math.sqrt(x[0] ** 2 + x[1] ** 2), x[1] / math.sqrt(x[0] ** 2 + x[1] ** 2))
-        ip = np.array([0.,0.,0.,0.])
-        if x[0] >= 0:ip[0] = x[0]
-        elif x[0] < 0: ip[2] = abs(x[0])
-
-        if x[1] < 0: ip[3] = abs(x[1])
-        elif x[1] >= 0: ip[1] = x[1]
-
-        return ip
-
-    def process_output(self,x):
-        '''
-        :param x: input in the 4*1 array form
-        :return: output angle values - (angle pos,angle neg)
-        '''
-        op = np.zeros(shape=2)
-        if x[3] > 0:
-            if x[0] > 0: op[0],op[1] = 90, -180
-            else: op[0],op[1] = 180,-90
-        elif x[0] > 0: op[0],op[1] = np.clip(np.arcsin(x[0])*180/np.pi,10,90),-180
-        elif x[2] > 0: op[0],op[1] = 180,-np.clip(np.arcsin(x[1])*180/np.pi,10,90)
-        return op
-
-    def gen_training_data(self,n):
-        '''
-        :param n: number of datapoints to be generated
-        :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
-        '''
-        print('Generating training data ...')
+    def generate_training_data_circular(self,n):
         data = np.zeros(shape=(n,6))
-        for i in range(n):
-            r1,r2 = random.randint(-50,50),random.randint(-50,50)
-            if r1 == 0  and r2 == 0:
-                r1, r2 = random.randint(-50, 50), random.randint(-50, 50)
-            ip = self.process_input((r1,r2))
-            op = self.process_output(ip)
-            temp = np.append(ip,op)
-            data[i] = temp
-        print('data gen done.')
+        step_size = 90.0/N
+        data_point = 0
+        for i in np.arange(0.0, 90.0, step_size):
+            x = np.cos(i * math.pi/180)
+            y = np.sin(i * math.pi/180)
+            input_vector = np.zeros(4)
+            if x >= 0:
+                input_vector[0] = x
+            else:
+                input_vector[2] = -x
+            if y >= 0:
+                input_vector[1] = y
+            else:
+                input_vector[3] = -y
+
+            output_vector = np.zeros(2)
+            if i<91:
+                output_vector = np.array([90.0-i,-180.0])
+            elif i<271:
+                output_vector = np.array([180.0,90.0-i])
+            else:
+                output_vector = np.array([450.0-i,-180.0])
+
+
+            data[data_point] = np.append(input_vector, output_vector)
+            data_point += 1
+
         return data
-
-    def gen_training_data_updated(self,n):
-        '''
-
-        :param n: number of datapoints to be generated
-        :return: data array consisting of n*4 values, first 3 being ip, next 2 being output
-        '''
-        print('Generating training data using updated data gen...')
-        data = np.zeros(shape=(n,6))
-        n1 = round(n*SPLIT)
-        print(n1)
-        n2 = n - n1
-        for i in range(n1):
-            r1,r2 = random.randint(0,10),random.randint(0,50)
-            if r1 == 0  and r2 == 0:
-                r1, r2 = random.randint(0, 50), random.randint(0, 50)
-            ip = self.process_input((r1,r2))
-            op = self.process_output(ip)
-            temp = np.append(ip,op)
-            data[i] = temp
-        for i in range(n2):
-            r1,r2 = random.randint(-50,50),random.randint(50,50)
-            if r1 == 0  and r2 == 0:
-                r1, r2 = random.randint(-50, 50), random.randint(50, 50)
-            ip = self.process_input((r1,r2))
-            op = self.process_output(ip)
-            temp = np.append(ip,op)
-            data[i+n1] = temp
-        print('data generation done.')
-        return data
-
-    def gen_training_data_circular(self,n=N):
-        skip = 90.0/N
-        print(skip)
-        data = np.zeros(shape=(n,6))
-        for i in range(n):
-            angle = skip*i
-            y = math.sin(angle*math.pi/180)
-            x = math.cos(angle*math.pi/180)
-            print(angle,x)
-            ip = self.process_input((x,y))
-            op = self.process_output(ip)
-            temp = np.append(ip,op)
-            #print(temp)
-            data[i] = temp
-        return  data
 
 
     def generate_test_data(self,n):
         data_size = n / 10
         test_data = np.zeros(shape=(data_size,6))
         for data_point in range(data_size):
-            i = random.randint(0,360)
-            x = np.cos(i)
-            y = np.sin(i)
+            i = random.randint(0,90)
+            x = np.cos(i * math.pi/180)
+            y = np.sin(i * math.pi/180)
             input_vector = np.zeros(4)
             if x >= 0:
                 input_vector[0] = x
@@ -535,12 +474,14 @@ if __name__ == '__main__':
     op = [[], []]
     errors = []
     accuracies = []
+    # call with argument 0 for training
     if len(sys.argv)>1 and int(sys.argv[1]) == 0:
         random.seed(999)
         np.random.seed(999)
-        data = snn.gen_training_data_circular(n=N)
+        data = snn.generate_training_data_circular(N)
         validation_data = snn.generate_test_data(N)
         print('training  ...............')
+        W = snn.W
         for epoch in range(EPOCHS):
             for data_frame in data:
                 for i in range(50):
@@ -551,39 +492,36 @@ if __name__ == '__main__':
             '''every 10 epochs perform a training accuracy - number of correct turns/N'''
             max_accuracy = 0
             max_error = 0
-            if (1 == 1):
-                accuracy = 0.0
-                error = 0.0
-                for data_frame in validation_data:
-                    for i in range(50):
-                        tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
-                    op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
-                    op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
-                    turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
-                    d_op0 = data_frame[4]
-                    d_op1 = data_frame[5]
-                    turn_actual = 1*(abs(d_op0) > abs(d_op1))
-                    if turn_predicted == turn_actual:
-                        error = error + 1
-                        if turn_predicted == 0:
-                            accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
-                        else:
-                            accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
-                    snn.reset()
-                error = error / N
-                errors.append(error)
-                accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
-                snn.adj = 1 - error/100.0
-                if max_accuracy < accuracy and max_error <= error:
-                    #W = snn.W # saving the model
-                    max_error = error
-                    max_accuracy = accuracy
-                accuracies.append(accuracy)
-                print('for epoch, error, accuracy : ',epoch,error,accuracy)
+            accuracy = 0.0
+            error = 0.0
+            for data_frame in validation_data:
+                for i in range(50):
+                    tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
+                op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
+                op1 = snn.output_layer[1].calculate_angle(snn.frame, 1)
+                turn_predicted = 1 * (abs(op0) > abs(op1)) # if turn is 0, angle in x pos, else if turn is 1, angle is xneg
+                d_op0 = data_frame[4]
+                d_op1 = data_frame[5]
+                turn_actual = 1*(abs(d_op0) > abs(d_op1))
+                if turn_predicted == turn_actual:
+                    error = error + 1
+                    if turn_predicted == 0:
+                        accuracy = accuracy + abs((abs(op0) - abs(d_op0)))
+                    else:
+                        accuracy = accuracy + abs((abs(op1) - abs(d_op1)))
+                snn.reset()
+            error = error / N
+            errors.append(error)
+            accuracy = (1-(accuracy / (80 * N)))*100 # max (max angle - min angle) percentage
+            snn.adj = 1 - error/100.0
+            if max_accuracy < accuracy and max_error <= error:
+                W = snn.W # saving the model
+                max_error = error
+                max_accuracy = accuracy
+            accuracies.append(accuracy)
+            print('for epoch, error, accuracy : ',epoch,error,accuracy)
         print(data)
-        W = snn.W
-        dir = os.getcwd()
-        dir = dir + '/snn_stuff/snn_temp_testing_1'
+        dir = os.path.abspath('snn_weights')
         np.save(dir, W)
         pyplot.plot(range(0,len(errors)),errors)
         pyplot.show()
@@ -600,8 +538,7 @@ if __name__ == '__main__':
         if ip[0] < 0: result_array[2] = abs(ip[0])
         if ip[1] < 0: result_array[3] = abs(ip[1])
         print(result_array)
-        cwd = os.getcwd()
-        weight_file = cwd + '/snn_stuff/snn_temp_testing_1.npy'
+        weight_file = os.path.abspath('snn_weights.npy')
         print(snn_testing(result_array,np.load(weight_file)))
 
 

@@ -7,16 +7,16 @@ Installation
 1. Install [Gazebo](http://gazebosim.org/download) and [ROS](http://wiki.ros.org/kinetic/Installation/Ubuntu)
 2. Clone the [snake simulation](https://github.com/alexansari101/snake_ws):
 ```bash
-git clone https://github.com/alexansari101/snake_ws
+$ git clone https://github.com/alexansari101/snake_ws
 ```
 3. Move to the downloaded workspace and build
 ```bash
-cd snake_ws
-catkin_make
+$ cd snake_ws
+$ catkin_make
 ```
 4. Go to the parent directory and clone this repo
 ```bash
-git clone https://github.com/KarthikeyaKaushik/TiVoGa 
+$ git clone https://github.com/KarthikeyaKaushik/TiVoGa 
 ```
 
 Running
@@ -25,25 +25,25 @@ Running
 
 2. Source 
 ```bash 
-cd snake_ws
-source devel/setup.bash
+$ cd snake_ws
+$ source devel/setup.bash
 ```
 
 3. Start the simulation
 ```bash
-roslaunch snake_control gazebo.launch gait:=false paused:=false
+$ roslaunch snake_control gazebo.launch gait:=false paused:=false
 ```
 
 4. In a new tab start the positioning script
 ```bash
-cd ..
-cd TiVoGa
-./get_snake_pos.py
+$ cd ..
+$ cd TiVoGa
+$ ./get_snake_pos.py
 ```
 
 5. In a new tab start the gaits script
 ```bash
-./gaits.py 1
+$ ./gaits.py 1
 ```
 6. Add a target in Gazebo
 

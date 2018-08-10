@@ -29,9 +29,9 @@ movement_vector = [0.0,0.0]
 print "Got connection from", addr
 
 # loading the pre-calculated weights file  for our neural network
-dir = os.path.join(os.path.abspath('snn_stuff'),'snn_temp_testing_1.npy')
-from snn_stuff import GoalApproaching
+dir = os.path.join(os.path.abspath('snn_stuff'),'snn_weights.npy')
 W = np.load(dir)
+from snn_stuff import GoalApproaching
 
 # console menu function
 def choose_data():
