@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 import numpy as np
+import sys
 import math
 import os
 from matplotlib import pyplot
@@ -17,7 +19,6 @@ OUTPUT_LAYER = 2
 EPOCHS = 100
 EPMAX = EPOCHS # online calculation
 SPLIT = 0 # data split for training on high accuracy requirement stuff
-TRAIN = False
 
 '''
 DISCLAIMER : Comments do not necessarily reflect ground truths. Please forgive me. :p
@@ -400,6 +401,34 @@ class SNN():
         return  data
 
 
+    def generate_test_data(self,n):
+        data_size = n / 10
+        test_data = np.zeros(shape=(data_size,6))
+        for data_point in range(data_size):
+            i = random.randint(0,360)
+            x = np.cos(i)
+            y = np.sin(i)
+            input_vector = np.zeros(4)
+            if x >= 0:
+                input_vector[0] = x
+            else:
+                input_vector[2] = -x
+            if y >= 0:
+                input_vector[1] = y
+            else:
+                input_vector[3] = -y
+
+            output_vector = np.zeros(2)
+            if i<91:
+                output_vector = np.array([90.0-i,-180.0])
+            elif i<271:
+                output_vector = np.array([180.0,90.0-i])
+            else:
+                output_vector = np.array([450.0-i,-180.0])
+
+            test_data[data_point] = np.append(input_vector, output_vector)
+
+        return test_data
 
 
 
@@ -506,10 +535,11 @@ if __name__ == '__main__':
     op = [[], []]
     errors = []
     accuracies = []
-    if (TRAIN):
+    if len(sys.argv)>1 and int(sys.argv[1]) == 0:
         random.seed(999)
         np.random.seed(999)
         data = snn.gen_training_data_circular(n=N)
+        validation_data = snn.generate_test_data(N)
         print('training  ...............')
         for epoch in range(EPOCHS):
             for data_frame in data:
@@ -524,7 +554,7 @@ if __name__ == '__main__':
             if (1 == 1):
                 accuracy = 0.0
                 error = 0.0
-                for data_frame in data:
+                for data_frame in validation_data:
                     for i in range(50):
                         tmat_input, tmat_hidden = snn.forward_pass(x_input=data_frame[0:4], ep=curr_ep,train=False)
                     op0 = snn.output_layer[0].calculate_angle(snn.frame, 0)
